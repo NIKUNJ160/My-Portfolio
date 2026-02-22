@@ -1,19 +1,21 @@
 import { Hono } from 'hono';
+import type { Context } from 'hono';
 import {
     hashPassword, verifyPassword,
     createSessionToken, getSessionCookie, setSessionCookie, clearSessionCookie,
     authMiddleware
-} from './auth.js';
+} from './auth';
 import {
     renderPortfolio, renderLogin, renderRegister,
     renderAdminProjects, renderProjectForm,
     renderAdminSkills, renderAdminServices, renderAdminMessages
-} from './templates.js';
+} from './templates';
+import type { Env, Variables, ProjectRow, SkillRow, ServiceRow, MessageRow } from './env';
 
-const app = new Hono();
+const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 // Helper to parse form body
-async function parseForm(c) {
+async function parseForm(c: Context): Promise<Record<string, any>> {
     const contentType = c.req.header('Content-Type') || '';
     if (contentType.includes('application/x-www-form-urlencoded')) {
         const text = await c.req.text();
@@ -21,7 +23,7 @@ async function parseForm(c) {
     }
     if (contentType.includes('multipart/form-data')) {
         const formData = await c.req.formData();
-        const obj = {};
+        const obj: Record<string, any> = {};
         for (const [key, value] of formData.entries()) {
             obj[key] = value;
         }
@@ -39,15 +41,15 @@ app.get('/', async (c) => {
     const db = c.env.DB;
     const projectsResult = await db.prepare(
         'SELECT * FROM projects WHERE is_featured = 1 ORDER BY created_at DESC'
-    ).all();
+    ).all<ProjectRow>();
     const projects = projectsResult.results || [];
 
     const skillsResult = await db.prepare(
         'SELECT * FROM skills ORDER BY category, proficiency DESC'
-    ).all();
+    ).all<SkillRow>();
     const allSkills = skillsResult.results || [];
 
-    const skillsByCategory = {};
+    const skillsByCategory: Record<string, SkillRow[]> = {};
     for (const skill of allSkills) {
         if (!skillsByCategory[skill.category]) skillsByCategory[skill.category] = [];
         skillsByCategory[skill.category].push(skill);
@@ -64,9 +66,9 @@ app.post('/contact', async (c) => {
 
     if (!name || !email || !message) {
         // Re-render with error
-        const projectsResult = await db.prepare('SELECT * FROM projects WHERE is_featured = 1 ORDER BY created_at DESC').all();
-        const skillsResult = await db.prepare('SELECT * FROM skills ORDER BY category, proficiency DESC').all();
-        const skillsByCategory = {};
+        const projectsResult = await db.prepare('SELECT * FROM projects WHERE is_featured = 1 ORDER BY created_at DESC').all<ProjectRow>();
+        const skillsResult = await db.prepare('SELECT * FROM skills ORDER BY category, proficiency DESC').all<SkillRow>();
+        const skillsByCategory: Record<string, SkillRow[]> = {};
         for (const s of (skillsResult.results || [])) {
             if (!skillsByCategory[s.category]) skillsByCategory[s.category] = [];
             skillsByCategory[s.category].push(s);
@@ -77,18 +79,18 @@ app.post('/contact', async (c) => {
     try {
         await db.prepare('INSERT INTO messages (name, email, message) VALUES (?, ?, ?)').bind(name, email, message).run();
         // Re-render with success
-        const projectsResult = await db.prepare('SELECT * FROM projects WHERE is_featured = 1 ORDER BY created_at DESC').all();
-        const skillsResult = await db.prepare('SELECT * FROM skills ORDER BY category, proficiency DESC').all();
-        const skillsByCategory = {};
+        const projectsResult = await db.prepare('SELECT * FROM projects WHERE is_featured = 1 ORDER BY created_at DESC').all<ProjectRow>();
+        const skillsResult = await db.prepare('SELECT * FROM skills ORDER BY category, proficiency DESC').all<SkillRow>();
+        const skillsByCategory: Record<string, SkillRow[]> = {};
         for (const s of (skillsResult.results || [])) {
             if (!skillsByCategory[s.category]) skillsByCategory[s.category] = [];
             skillsByCategory[s.category].push(s);
         }
         return c.html(renderPortfolio(projectsResult.results || [], skillsByCategory, true));
     } catch (e) {
-        const projectsResult = await db.prepare('SELECT * FROM projects WHERE is_featured = 1 ORDER BY created_at DESC').all();
-        const skillsResult = await db.prepare('SELECT * FROM skills ORDER BY category, proficiency DESC').all();
-        const skillsByCategory = {};
+        const projectsResult = await db.prepare('SELECT * FROM projects WHERE is_featured = 1 ORDER BY created_at DESC').all<ProjectRow>();
+        const skillsResult = await db.prepare('SELECT * FROM skills ORDER BY category, proficiency DESC').all<SkillRow>();
+        const skillsByCategory: Record<string, SkillRow[]> = {};
         for (const s of (skillsResult.results || [])) {
             if (!skillsByCategory[s.category]) skillsByCategory[s.category] = [];
             skillsByCategory[s.category].push(s);
@@ -112,7 +114,7 @@ app.post('/login', async (c) => {
         return c.html(renderLogin('Please fill in all fields.'));
     }
 
-    const user = await db.prepare('SELECT * FROM users WHERE username = ?').bind(username).first();
+    const user = await db.prepare('SELECT * FROM users WHERE username = ?').bind(username).first<{ id: number, username: string, password_hash: string }>();
     if (!user) {
         return c.html(renderLogin('Invalid username or password.'));
     }
@@ -184,7 +186,7 @@ app.get('/admin', (c) => c.redirect('/admin/projects'));
 app.get('/admin/projects', async (c) => {
     const db = c.env.DB;
     const user = c.get('user');
-    const result = await db.prepare('SELECT * FROM projects ORDER BY created_at DESC').all();
+    const result = await db.prepare('SELECT * FROM projects ORDER BY created_at DESC').all<ProjectRow>();
     const url = new URL(c.req.url);
     const msg = url.searchParams.get('msg') || '';
     return c.html(renderAdminProjects(result.results || [], user.username, msg));
@@ -195,9 +197,9 @@ app.get('/admin/projects/edit', async (c) => {
     const user = c.get('user');
     const url = new URL(c.req.url);
     const id = url.searchParams.get('id');
-    let project = null;
+    let project: ProjectRow | null = null;
     if (id) {
-        project = await db.prepare('SELECT * FROM projects WHERE id = ?').bind(id).first();
+        project = await db.prepare('SELECT * FROM projects WHERE id = ?').bind(id).first<ProjectRow>();
     }
     return c.html(renderProjectForm(project, user.username));
 });
@@ -233,7 +235,7 @@ app.post('/admin/projects/delete', async (c) => {
 app.get('/admin/skills', async (c) => {
     const db = c.env.DB;
     const user = c.get('user');
-    const result = await db.prepare('SELECT * FROM skills ORDER BY category, proficiency DESC').all();
+    const result = await db.prepare('SELECT * FROM skills ORDER BY category, proficiency DESC').all<SkillRow>();
     return c.html(renderAdminSkills(result.results || [], user.username));
 });
 
@@ -257,7 +259,7 @@ app.post('/admin/skills/delete', async (c) => {
 app.get('/admin/services', async (c) => {
     const db = c.env.DB;
     const user = c.get('user');
-    const result = await db.prepare('SELECT * FROM services ORDER BY created_at ASC').all();
+    const result = await db.prepare('SELECT * FROM services ORDER BY created_at ASC').all<ServiceRow>();
     return c.html(renderAdminServices(result.results || [], user.username));
 });
 
@@ -281,7 +283,7 @@ app.post('/admin/services/delete', async (c) => {
 app.get('/admin/messages', async (c) => {
     const db = c.env.DB;
     const user = c.get('user');
-    const result = await db.prepare('SELECT * FROM messages ORDER BY created_at DESC').all();
+    const result = await db.prepare('SELECT * FROM messages ORDER BY created_at DESC').all<MessageRow>();
     const url = new URL(c.req.url);
     const msg = url.searchParams.get('msg') || '';
     return c.html(renderAdminMessages(result.results || [], user.username, msg));

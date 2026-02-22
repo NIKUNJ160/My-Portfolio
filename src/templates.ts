@@ -1,6 +1,8 @@
 // HTML Templates - renders the same design as the original PHP files
 
-function escapeHtml(str) {
+import type { ProjectRow, SkillRow, ServiceRow, MessageRow } from './env';
+
+function escapeHtml(str: string | null | undefined): string {
     if (!str) return '';
     return String(str)
         .replace(/&/g, '&amp;')
@@ -12,7 +14,7 @@ function escapeHtml(str) {
 
 // ─── Base Layout ───
 
-function baseHead(title, extraCss = '') {
+function baseHead(title: string, extraCss: string = ''): string {
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -31,7 +33,14 @@ function baseHead(title, extraCss = '') {
 
 // ─── Public Portfolio ───
 
-function renderPortfolio(projects, skillsByCategory, messageSent = false, errorMsg = '') {
+type SkillsByCategory = Record<string, SkillRow[]>;
+
+export function renderPortfolio(
+    projects: ProjectRow[],
+    skillsByCategory: SkillsByCategory,
+    messageSent: boolean = false,
+    errorMsg: string = ''
+): string {
     const projectCards = projects.length > 0
         ? projects.map(p => {
             const tags = (p.tags || '').split(',').map(t => t.trim()).filter(Boolean);
@@ -251,7 +260,7 @@ const authCss = `<style>
     .success-msg { background: rgba(52, 211, 153, 0.1); color: var(--accent-color); padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1.5rem; font-size: 0.9rem; border: 1px solid rgba(52, 211, 153, 0.2); }
 </style>`;
 
-function renderLogin(error = '', success = '') {
+export function renderLogin(error: string = '', success: string = ''): string {
     return `${baseHead('Login | Nikunj Pateliya', authCss)}
 <body>
     <div class="auth-container">
@@ -283,7 +292,7 @@ function renderLogin(error = '', success = '') {
 </html>`;
 }
 
-function renderRegister(error = '') {
+export function renderRegister(error: string = ''): string {
     return `${baseHead('Register | Nikunj Pateliya', authCss)}
 <body>
     <div class="auth-container">
@@ -359,7 +368,7 @@ const adminCss = `<style>
     }
 </style>`;
 
-function adminSidebar(activePage, username) {
+function adminSidebar(activePage: string, username: string): string {
     return `<aside class="sidebar">
     <h2 style="font-size: 1.25rem; margin-bottom: 0.5rem;">Admin Panel</h2>
     <p style="color: var(--text-secondary); font-size: 0.85rem;">Hi, ${escapeHtml(username)}</p>
@@ -375,7 +384,7 @@ function adminSidebar(activePage, username) {
   </aside>`;
 }
 
-function renderAdminProjects(projects, username, msg = '') {
+export function renderAdminProjects(projects: ProjectRow[], username: string, msg: string = ''): string {
     const rows = projects.length > 0
         ? projects.map(p => `<tr>
         <td><img src="${escapeHtml(p.image_url)}" alt="" style="width: 60px; height: 40px; object-fit: cover; border-radius: 4px;"></td>
@@ -413,7 +422,7 @@ function renderAdminProjects(projects, username, msg = '') {
 </body></html>`;
 }
 
-function renderProjectForm(project, username) {
+export function renderProjectForm(project: ProjectRow | null, username: string): string {
     const isEdit = !!project;
     const title = isEdit ? 'Edit Project' : 'Add New Project';
     return `${baseHead(`${title} | Admin`, adminCss)}
@@ -423,7 +432,7 @@ function renderProjectForm(project, username) {
         <main class="main-content" style="max-width: 1050px;">
             <h1 style="margin-bottom: 2rem;">${title}</h1>
             <form method="POST" action="/admin/projects/save" style="display: grid; gap: 1.5rem;">
-                ${isEdit ? `<input type="hidden" name="id" value="${project.id}">` : ''}
+                ${isEdit ? `<input type="hidden" name="id" value="${project!.id}">` : ''}
                 <div class="form-group">
                     <label class="form-label">Project Title</label>
                     <input type="text" name="title" class="form-control" required value="${escapeHtml(project?.title || '')}">
@@ -464,7 +473,7 @@ function renderProjectForm(project, username) {
 </body></html>`;
 }
 
-function renderAdminSkills(skills, username) {
+export function renderAdminSkills(skills: SkillRow[], username: string): string {
     return `${baseHead('Skills | Admin', adminCss)}
 <body>
     <div class="admin-layout">
@@ -508,7 +517,7 @@ function renderAdminSkills(skills, username) {
 </body></html>`;
 }
 
-function renderAdminServices(services, username) {
+export function renderAdminServices(services: ServiceRow[], username: string): string {
     return `${baseHead('Services | Admin', adminCss)}
 <body>
     <div class="admin-layout">
@@ -552,8 +561,8 @@ function renderAdminServices(services, username) {
 </body></html>`;
 }
 
-function renderAdminMessages(messages, username, msg = '') {
-    const formatDate = (d) => {
+export function renderAdminMessages(messages: MessageRow[], username: string, msg: string = ''): string {
+    const formatDate = (d: string): string => {
         try {
             return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
         } catch { return d; }
@@ -594,14 +603,3 @@ function renderAdminMessages(messages, username, msg = '') {
     </div>
 </body></html>`;
 }
-
-export {
-    renderPortfolio,
-    renderLogin,
-    renderRegister,
-    renderAdminProjects,
-    renderProjectForm,
-    renderAdminSkills,
-    renderAdminServices,
-    renderAdminMessages
-};
