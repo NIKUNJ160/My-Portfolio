@@ -3,8 +3,31 @@
 import type { Context, Next } from 'hono';
 import type { Env, SessionPayload, Variables } from './env';
 
-const JWT_SECRET_KEY = 'portfolio-secret-key-change-in-production';
 const COOKIE_NAME = 'session_token';
+
+// --- Constant-time comparison helper ---
+
+function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
+    if (a.length !== b.length) {
+        // Run dummy loop to minimize timing leak, though length usually leaks anyway.
+        // For strings, we'll handle length mismatch before calling this.
+        return false;
+    }
+    let res = 0;
+    for (let i = 0; i < a.length; i++) {
+        res |= a[i] ^ b[i];
+    }
+    return res === 0;
+}
+
+// Helper to convert hex string to Uint8Array
+function hexToUint8Array(hex: string): Uint8Array {
+    const arr = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < hex.length; i += 2) {
+        arr[i / 2] = parseInt(hex.substring(i, i + 2), 16);
+    }
+    return arr;
+}
 
 // --- Password Hashing (PBKDF2) ---
 
@@ -24,8 +47,14 @@ export async function hashPassword(password: string): Promise<string> {
 }
 
 export async function verifyPassword(password: string, stored: string): Promise<boolean> {
-    const [saltHex, storedHashHex] = stored.split(':');
-    const salt = new Uint8Array(saltHex.match(/.{2}/g)!.map(b => parseInt(b, 16)));
+    const parts = stored.split(':');
+    if (parts.length !== 2) return false;
+
+    const [saltHex, storedHashHex] = parts;
+    const saltMatch = saltHex.match(/.{2}/g);
+    if (!saltMatch) return false;
+
+    const salt = new Uint8Array(saltMatch.map(b => parseInt(b, 16)));
     const encoder = new TextEncoder();
     const keyMaterial = await crypto.subtle.importKey(
         'raw', encoder.encode(password), 'PBKDF2', false, ['deriveBits']
@@ -34,8 +63,12 @@ export async function verifyPassword(password: string, stored: string): Promise<
         { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
         keyMaterial, 256
     );
-    const hashHex = Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
-    return hashHex === storedHashHex;
+
+    const computedHash = new Uint8Array(hash);
+    const storedHash = hexToUint8Array(storedHashHex);
+
+    // Constant-time comparison
+    return timingSafeEqual(computedHash, storedHash);
 }
 
 // --- JWT Session Tokens ---
@@ -51,17 +84,17 @@ function base64UrlDecode(str: string): string {
     return atob(str);
 }
 
-async function createHmac(message: string): Promise<string> {
+async function createHmac(message: string, secretKey: string): Promise<Uint8Array> {
     const encoder = new TextEncoder();
     const key = await crypto.subtle.importKey(
-        'raw', encoder.encode(JWT_SECRET_KEY),
+        'raw', encoder.encode(secretKey),
         { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
     );
     const sig = await crypto.subtle.sign('HMAC', key, encoder.encode(message));
-    return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
+    return new Uint8Array(sig);
 }
 
-export async function createSessionToken(userId: number, username: string): Promise<string> {
+export async function createSessionToken(userId: number, username: string, secretKey: string): Promise<string> {
     const header = base64UrlEncode({ alg: 'HS256', typ: 'JWT' });
     const payload = base64UrlEncode({
         sub: userId,
@@ -69,15 +102,26 @@ export async function createSessionToken(userId: number, username: string): Prom
         iat: Math.floor(Date.now() / 1000),
         exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60) // 7 days
     });
-    const signature = await createHmac(`${header}.${payload}`);
-    return `${header}.${payload}.${base64UrlEncode(signature)}`;
+    const signature = await createHmac(`${header}.${payload}`, secretKey);
+    const signatureHex = Array.from(signature).map(b => b.toString(16).padStart(2, '0')).join('');
+    return `${header}.${payload}.${base64UrlEncode(signatureHex)}`;
 }
 
-export async function verifySessionToken(token: string): Promise<SessionPayload | null> {
+export async function verifySessionToken(token: string, secretKey: string): Promise<SessionPayload | null> {
     try {
-        const [header, payload, signature] = token.split('.');
-        const expectedSig = await createHmac(`${header}.${payload}`);
-        if (base64UrlEncode(expectedSig) !== signature) return null;
+        const [header, payload, signatureEncoded] = token.split('.');
+        if (!header || !payload || !signatureEncoded) return null;
+
+        const expectedSig = await createHmac(`${header}.${payload}`, secretKey);
+        const expectedSigHex = Array.from(expectedSig).map(b => b.toString(16).padStart(2, '0')).join('');
+        const expectedSigEncoded = base64UrlEncode(expectedSigHex);
+
+        // Constant-time comparison
+        const a = new TextEncoder().encode(expectedSigEncoded);
+        const b = new TextEncoder().encode(signatureEncoded);
+
+        if (!timingSafeEqual(a, b)) return null;
+
         const data = JSON.parse(base64UrlDecode(payload)) as SessionPayload;
         if (data.exp < Math.floor(Date.now() / 1000)) return null;
         return data;
@@ -92,15 +136,17 @@ export function getSessionCookie(cookieHeader: string | undefined): string | nul
     if (!cookieHeader) return null;
     const cookies = cookieHeader.split(';').map(c => c.trim());
     const session = cookies.find(c => c.startsWith(`${COOKIE_NAME}=`));
-    return session ? session.split('=')[1] : null;
+    if (!session) return null;
+    return session.substring(session.indexOf('=') + 1);
 }
 
 export function setSessionCookie(token: string): string {
-    return `${COOKIE_NAME}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${7 * 24 * 60 * 60}`;
+    // Always include Secure flag as Workers usually run on HTTPS
+    return `${COOKIE_NAME}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${7 * 24 * 60 * 60}; Secure`;
 }
 
 export function clearSessionCookie(): string {
-    return `${COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
+    return `${COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0; Secure`;
 }
 
 // --- Auth Middleware ---
@@ -113,7 +159,7 @@ export async function authMiddleware(
     if (!cookie) {
         return c.redirect('/login');
     }
-    const session = await verifySessionToken(cookie);
+    const session = await verifySessionToken(cookie, c.env.JWT_SECRET_KEY);
     if (!session) {
         return c.redirect('/login');
     }

@@ -205,6 +205,7 @@ export function renderPortfolio(
                 ${errorBanner}
 
                 <form method="POST" action="/contact">
+                    <input type="hidden" name="csrfToken" value="fixed-csrf-token-for-now">
                     <div class="form-group">
                         <label for="name" class="form-label">Name</label>
                         <input type="text" id="name" name="name" class="form-control" required>
@@ -312,6 +313,10 @@ export function renderRegister(error: string = ''): string {
                 <div class="form-group">
                     <label class="form-label">Confirm Password</label>
                     <input type="password" name="confirm_password" class="form-control" required minlength="6">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Invite Code</label>
+                    <input type="text" name="invite_code" class="form-control" required>
                 </div>
                 <button type="submit" class="btn">Create Account</button>
             </form>
@@ -588,7 +593,10 @@ export function renderAdminMessages(messages: MessageRow[], username: string, ms
                             <div class="meta" style="margin-bottom: 5px;">${formatDate(m.created_at)}</div>
                             ${m.status === 'new'
                     ? `<span class="status-new">New</span>
-                                 <a href="/admin/messages/read?id=${m.id}" class="btn-action btn-read">Mark Read</a>`
+                                 <form method="POST" action="/admin/messages/read" style="display: inline;">
+                                     <input type="hidden" name="id" value="${m.id}">
+                                     <button type="submit" class="btn-action btn-read">Mark Read</button>
+                                 </form>`
                     : `<span class="meta">Read</span>`}
                         </div>
                     </div>

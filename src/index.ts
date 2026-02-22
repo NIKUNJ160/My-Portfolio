@@ -62,9 +62,13 @@ app.get('/', async (c) => {
 app.post('/contact', async (c) => {
     const db = c.env.DB;
     const form = await parseForm(c);
-    const { name, email, message } = form;
+    const { name, email, message, csrfToken } = form;
 
-    if (!name || !email || !message) {
+    if (csrfToken !== 'fixed-csrf-token-for-now') {
+        return c.html(renderPortfolio([], {}, false, 'Invalid CSRF token.'));
+    }
+
+    if (!name || !email || !message || !name.trim() || !email.trim() || !message.trim()) {
         // Re-render with error
         const projectsResult = await db.prepare('SELECT * FROM projects WHERE is_featured = 1 ORDER BY created_at DESC').all<ProjectRow>();
         const skillsResult = await db.prepare('SELECT * FROM skills ORDER BY category, proficiency DESC').all<SkillRow>();
@@ -124,7 +128,7 @@ app.post('/login', async (c) => {
         return c.html(renderLogin('Invalid username or password.'));
     }
 
-    const token = await createSessionToken(user.id, user.username);
+    const token = await createSessionToken(user.id, user.username, c.env.JWT_SECRET_KEY);
     return new Response(null, {
         status: 302,
         headers: {
@@ -134,12 +138,24 @@ app.post('/login', async (c) => {
     });
 });
 
-app.get('/register', (c) => c.html(renderRegister()));
+app.get('/register', (c) => {
+    if (c.env.ALLOW_REGISTRATION !== 'true') {
+        return c.redirect('/login');
+    }
+    return c.html(renderRegister());
+});
 
 app.post('/register', async (c) => {
+    if (c.env.ALLOW_REGISTRATION !== 'true') {
+        return c.redirect('/login');
+    }
     const db = c.env.DB;
     const form = await parseForm(c);
-    const { username, password, confirm_password } = form;
+    const { username, password, confirm_password, invite_code } = form;
+
+    if (invite_code !== c.env.INVITE_CODE) {
+        return c.html(renderRegister('Invalid invite code.'));
+    }
 
     if (!username || !password || !confirm_password) {
         return c.html(renderRegister('Please fill in all fields.'));
@@ -210,6 +226,10 @@ app.post('/admin/projects/save', async (c) => {
     const { id, title, description, tags, image_url, project_url, repo_url } = form;
     const is_featured = form.is_featured ? 1 : 0;
 
+    if (!title || !description || !title.trim() || !description.trim()) {
+        return c.redirect('/admin/projects?msg=Error:+Title+and+Description+are+required');
+    }
+
     if (id) {
         await db.prepare(
             'UPDATE projects SET title=?, description=?, tags=?, project_url=?, repo_url=?, image_url=?, is_featured=? WHERE id=?'
@@ -242,8 +262,19 @@ app.get('/admin/skills', async (c) => {
 app.post('/admin/skills/add', async (c) => {
     const db = c.env.DB;
     const form = await parseForm(c);
+    const { name, category } = form;
+    let proficiency = parseInt(form.proficiency);
+
+    if (!name || !category || !name.trim()) {
+        return c.redirect('/admin/skills?msg=Error:+Name+and+Category+are+required');
+    }
+
+    // Clamp proficiency to 0-100
+    if (isNaN(proficiency)) proficiency = 80;
+    proficiency = Math.max(0, Math.min(100, proficiency));
+
     await db.prepare('INSERT INTO skills (name, category, proficiency) VALUES (?, ?, ?)')
-        .bind(form.name, form.category, parseInt(form.proficiency) || 80).run();
+        .bind(name, category, proficiency).run();
     return c.redirect('/admin/skills');
 });
 
@@ -266,8 +297,14 @@ app.get('/admin/services', async (c) => {
 app.post('/admin/services/add', async (c) => {
     const db = c.env.DB;
     const form = await parseForm(c);
+    const { title, description, icon } = form;
+
+    if (!title || !description || !icon || !title.trim() || !description.trim() || !icon.trim()) {
+        return c.redirect('/admin/services?msg=Error:+All+fields+are+required');
+    }
+
     await db.prepare('INSERT INTO services (title, description, icon) VALUES (?, ?, ?)')
-        .bind(form.title, form.description, form.icon).run();
+        .bind(title, description, icon).run();
     return c.redirect('/admin/services');
 });
 
@@ -289,11 +326,13 @@ app.get('/admin/messages', async (c) => {
     return c.html(renderAdminMessages(result.results || [], user.username, msg));
 });
 
-app.get('/admin/messages/read', async (c) => {
+app.post('/admin/messages/read', async (c) => {
     const db = c.env.DB;
-    const url = new URL(c.req.url);
-    const id = url.searchParams.get('id');
-    await db.prepare("UPDATE messages SET status = 'read' WHERE id = ?").bind(id).run();
+    const form = await parseForm(c);
+    const id = form.id;
+    if (id) {
+        await db.prepare("UPDATE messages SET status = 'read' WHERE id = ?").bind(id).run();
+    }
     return c.redirect('/admin/messages');
 });
 

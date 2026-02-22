@@ -2,6 +2,9 @@
 
 export interface Env {
     DB: D1Database;
+    JWT_SECRET_KEY: string;
+    ALLOW_REGISTRATION: string;
+    INVITE_CODE: string;
 }
 
 export interface SessionPayload {
