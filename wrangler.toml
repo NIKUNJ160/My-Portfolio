@@ -1,0 +1,11 @@
+name = "nikunj-portfolio"
+main = "src/index.js"
+compatibility_date = "2024-12-01"
+
+[assets]
+directory = "./public"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "portfolio-db"
+database_id = "placeholder-replace-after-creation"
