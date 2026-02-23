@@ -44,8 +44,12 @@ export function renderPortfolio(
     const projectCards = projects.length > 0
         ? projects.map(p => {
             const tags = (p.tags || '').split(',').map(t => t.trim()).filter(Boolean);
+            let imgUrl = p.image_url || 'assets/images/placeholder.jpg';
+            if (imgUrl && !imgUrl.startsWith('http') && !imgUrl.startsWith('/')) {
+                imgUrl = '/' + imgUrl;
+            }
             return `<article class="project-card">
-            <img src="${escapeHtml(p.image_url || 'assets/images/placeholder.jpg')}" alt="${escapeHtml(p.title)}" class="project-thumb">
+            <img src="${escapeHtml(imgUrl)}" alt="${escapeHtml(p.title)}" class="project-thumb">
             <div class="project-content">
                 <div class="project-tags">
                     ${tags.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('')}
@@ -391,8 +395,13 @@ function adminSidebar(activePage: string, username: string): string {
 
 export function renderAdminProjects(projects: ProjectRow[], username: string, msg: string = ''): string {
     const rows = projects.length > 0
-        ? projects.map(p => `<tr>
-        <td><img src="${escapeHtml(p.image_url)}" alt="" style="width: 60px; height: 40px; object-fit: cover; border-radius: 4px;"></td>
+        ? projects.map(p => {
+            let imgUrl = p.image_url || '';
+            if (imgUrl && !imgUrl.startsWith('http') && !imgUrl.startsWith('/')) {
+                imgUrl = '/' + imgUrl;
+            }
+            return `<tr>
+        <td><img src="${escapeHtml(imgUrl)}" alt="" style="width: 60px; height: 40px; object-fit: cover; border-radius: 4px;"></td>
         <td>${escapeHtml(p.title)}</td>
         <td>${escapeHtml(p.tags)}</td>
         <td>${p.is_featured ? 'Yes' : 'No'}</td>
@@ -403,7 +412,8 @@ export function renderAdminProjects(projects: ProjectRow[], username: string, ms
                 <button type="submit" class="action-btn btn-delete">Delete</button>
             </form>
         </td>
-      </tr>`).join('')
+      </tr>`;
+        }).join('')
         : `<tr><td colspan="5" style="text-align: center; padding: 2rem; color: var(--text-secondary);">No projects found.</td></tr>`;
 
     return `${baseHead('Manage Projects | Admin', adminCss)}
@@ -451,8 +461,8 @@ export function renderProjectForm(project: ProjectRow | null, username: string):
                     <input type="text" name="tags" class="form-control" value="${escapeHtml(project?.tags || '')}" placeholder="PHP, React, CSS">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Image URL</label>
-                    <input type="url" name="image_url" class="form-control" value="${escapeHtml(project?.image_url || '')}" placeholder="https://...">
+                    <label class="form-label">Image URL or Local Path</label>
+                    <input type="text" name="image_url" class="form-control" value="${escapeHtml(project?.image_url || '')}" placeholder="e.g. /assets/images/projects/photo.jpg or https://...">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Project URL (Live Link)</label>

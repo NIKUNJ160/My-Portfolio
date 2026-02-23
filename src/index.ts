@@ -225,6 +225,10 @@ app.post('/admin/projects/save', async (c) => {
     const form = await parseForm(c);
     const { id, title, description, tags, image_url, project_url, repo_url } = form;
     const is_featured = form.is_featured ? 1 : 0;
+    let normalizedImageUrl = image_url || '';
+    if (normalizedImageUrl && !normalizedImageUrl.startsWith('http') && !normalizedImageUrl.startsWith('/')) {
+        normalizedImageUrl = '/' + normalizedImageUrl;
+    }
 
     if (!title || !description || !title.trim() || !description.trim()) {
         return c.redirect('/admin/projects?msg=Error:+Title+and+Description+are+required');
@@ -233,11 +237,11 @@ app.post('/admin/projects/save', async (c) => {
     if (id) {
         await db.prepare(
             'UPDATE projects SET title=?, description=?, tags=?, project_url=?, repo_url=?, image_url=?, is_featured=? WHERE id=?'
-        ).bind(title, description, tags || '', project_url || '', repo_url || '', image_url || '', is_featured, id).run();
+        ).bind(title, description, tags || '', project_url || '', repo_url || '', normalizedImageUrl, is_featured, id).run();
     } else {
         await db.prepare(
             'INSERT INTO projects (title, description, tags, project_url, repo_url, image_url, is_featured) VALUES (?, ?, ?, ?, ?, ?, ?)'
-        ).bind(title, description, tags || '', project_url || '', repo_url || '', image_url || '', is_featured).run();
+        ).bind(title, description, tags || '', project_url || '', repo_url || '', normalizedImageUrl, is_featured).run();
     }
 
     return c.redirect('/admin/projects?msg=Project+saved+successfully');
