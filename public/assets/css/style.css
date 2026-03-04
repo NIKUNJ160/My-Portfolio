@@ -126,8 +126,8 @@ a:hover {
     background: rgba(22, 22, 22, 0.85);
     /* Slightly darker for better contrast */
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
     max-width: 90%;
 }
 
@@ -206,18 +206,16 @@ a:hover {
 /* Status Pill (Fixed Left) */
 .status-pill {
     position: fixed;
-    left: 2rem;
-    top: 50%;
-    transform: translateY(-50%) rotate(-90deg);
-    transform-origin: center;
+    right: 2rem;
+    top: 2rem;
     display: inline-flex;
     align-items: center;
     gap: 8px;
     padding: 8px 20px;
     border-radius: 99px;
     background: rgba(26, 26, 26, 0.8);
-    backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
     color: var(--accent-color);
     font-family: var(--font-mono);
     font-size: 0.875rem;
@@ -436,6 +434,15 @@ a:hover {
 
     .hero-title {
         font-size: 2.5rem;
+    }
+
+    .status-pill {
+        left: auto;
+        right: 1.5rem;
+        top: 1.5rem;
+        transform: none;
+        padding: 6px 16px;
+        font-size: 0.8rem;
     }
 }
 
