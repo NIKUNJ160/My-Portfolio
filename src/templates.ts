@@ -226,10 +226,10 @@ export function renderPortfolio(
                 </form>
 
                 <div class="contact-socials">
-                    <a href="#" class="social-link" title="LinkedIn"><i class="fab fa-linkedin"></i></a>
-                    <a href="#" class="social-link" title="GitHub"><i class="fab fa-github"></i></a>
-                    <a href="#" class="social-link" title="Twitter"><i class="fab fa-twitter"></i></a>
-                    <a href="#" class="social-link" title="WhatsApp"><i class="fab fa-whatsapp"></i></a>
+                    <a href="https://www.linkedin.com/in/nikunjpateliya1608" target="_blank" class="social-link" title="LinkedIn"><i class="fab fa-linkedin"></i></a>
+                    <a href="https://github.com/NIKUNJ160" target="_blank" class="social-link" title="GitHub"><i class="fab fa-github"></i></a>
+                    <a href="https://www.instagram.com/_nik__16/" target="_blank" class="social-link" title="Instagram"><i class="fab fa-instagram"></i></a>
+                    <a href="https://wa.me/919328801435" target="_blank" class="social-link" title="WhatsApp"><i class="fab fa-whatsapp"></i></a>
                 </div>
             </div>
         </div>
