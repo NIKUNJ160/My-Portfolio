@@ -36,6 +36,11 @@ async function parseForm(c: Context): Promise<Record<string, any>> {
 // PUBLIC ROUTES
 // ═══════════════════════════════════════
 
+// Pinterest Verification
+app.get('/pinterest-12995.html', (c) => {
+    return c.text('pinterest-site-verification=201b195821c2725595f95f4e09f5ec7e');
+});
+
 // Portfolio Home
 app.get('/', async (c) => {
     const db = c.env.DB;
