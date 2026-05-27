@@ -11,4 +11,10 @@ database_name = "portfolio-db"
 database_id = "d9e46eaa-6f5f-428c-98e2-b67f4da500ba"
 
 [vars]
-ALLOW_REGISTRATION = "true"
+# FIX CRIT-2: Registration disabled by default. Enable temporarily via Cloudflare
+# dashboard (Workers > Settings > Variables) when you need to create an account,
+# then set back to "false". Never commit "true" to a public repository.
+ALLOW_REGISTRATION = "false"
+# NOTE: JWT_SECRET_KEY and INVITE_CODE must be set as encrypted Secrets,
+# NOT as [vars]. Use: wrangler secret put JWT_SECRET_KEY
+#                      wrangler secret put INVITE_CODE

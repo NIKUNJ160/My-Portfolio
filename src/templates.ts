@@ -1,6 +1,6 @@
 // HTML Templates - renders the same design as the original PHP files
 
-import type { ProjectRow, SkillRow, ServiceRow, MessageRow } from './env';
+import type { ProjectRow, SkillRow, ServiceRow, MessageRow, BlogPostRow } from './env';
 
 function escapeHtml(str: string | null | undefined): string {
     if (!str) return '';
@@ -41,7 +41,9 @@ export function renderPortfolio(
     projects: ProjectRow[],
     skillsByCategory: SkillsByCategory,
     messageSent: boolean = false,
-    errorMsg: string = ''
+    errorMsg: string = '',
+    csrfToken: string = '',
+    recentPosts: BlogPostRow[] = []
 ): string {
     const projectCards = projects.length > 0
         ? projects.map(p => {
@@ -127,6 +129,7 @@ export function renderPortfolio(
                 <a href="#work">Work</a>
                 <a href="#services">Services</a>
                 <a href="#about">About</a>
+                <a href="/blog">Blog</a>
                 <a href="#contact" class="btn">Let's Talk</a>
             </div>
         </div>
@@ -200,6 +203,34 @@ export function renderPortfolio(
         </div>
     </section>
 
+    <!-- Blog Preview Section -->
+    ${recentPosts.length > 0 ? `<section id="blog" class="section">
+        <div class="container">
+            <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:3rem;flex-wrap:wrap;gap:1rem;">
+                <div>
+                    <p style="color:var(--accent-color);font-size:0.85rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.5rem;">Writing</p>
+                    <h2 style="font-size:2.5rem;margin:0;">Latest Posts</h2>
+                </div>
+                <a href="/blog" style="color:var(--accent-color);font-weight:600;font-size:0.95rem;">View All Posts &rarr;</a>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1.5rem;">
+                ${recentPosts.map(p => {
+                    const rt = Math.max(1, Math.round(((p.content||'').replace(/<[^>]+>/g,'').match(/\\S+/g)||[]).length/200));
+                    const d = (() => { try { return new Date(p.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); } catch { return p.created_at; } })();
+                    const ptags = (p.tags||'').split(',').map(t=>t.trim()).filter(Boolean);
+                    return `<a href="/blog/${escapeHtml(p.slug)}" style="display:block;background:var(--bg-card);border:1px solid var(--border-color);border-radius:16px;padding:1.75rem;text-decoration:none;transition:all 0.3s ease;">
+                        ${ptags.length?`<div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-bottom:0.75rem;">${ptags.slice(0,2).map(t=>`<span style="font-size:0.72rem;font-weight:600;padding:2px 8px;border-radius:99px;background:rgba(52,211,153,0.1);color:var(--accent-color);text-transform:uppercase;">${escapeHtml(t)}</span>`).join('')}</div>`:''}
+                        <h3 style="font-size:1.1rem;font-weight:700;color:var(--text-primary);margin-bottom:0.6rem;line-height:1.4;">${escapeHtml(p.title)}</h3>
+                        ${p.excerpt?`<p style="color:var(--text-secondary);font-size:0.88rem;line-height:1.6;margin-bottom:1rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${escapeHtml(p.excerpt)}</p>`:''}
+                        <div style="display:flex;justify-content:space-between;color:var(--text-muted);font-size:0.8rem;padding-top:0.875rem;border-top:1px solid var(--border-color);">
+                            <span>${d}</span><span style="color:var(--accent-color);font-weight:600;">${rt} min read &rarr;</span>
+                        </div>
+                    </a>`;
+                }).join('')}
+            </div>
+        </div>
+    </section>` : ''}
+
     <!-- Contact Section -->
     <section id="contact" class="section" style="margin-bottom: 4rem;">
         <div class="container">
@@ -211,7 +242,7 @@ export function renderPortfolio(
                 ${errorBanner}
 
                 <form method="POST" action="/contact">
-                    <input type="hidden" name="csrfToken" value="fixed-csrf-token-for-now">
+                    <input type="hidden" name="csrfToken" value="${escapeHtml(csrfToken)}">
                     <div class="form-group">
                         <label for="name" class="form-label">Name</label>
                         <input type="text" id="name" name="name" class="form-control" required>
@@ -237,8 +268,7 @@ export function renderPortfolio(
         </div>
     </section>
 
-    <!-- Floating Admin Button -->
-    <a href="/admin" id="admin-fab" title="Admin Panel" style="position: fixed; bottom: 6rem; right: 2rem; width: 48px; height: 48px; border-radius: 50%; background: rgba(26,26,26,0.9); border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(12px); display: flex; align-items: center; justify-content: center; font-size: 1.25rem; color: var(--text-secondary); z-index: 999; transition: all 0.2s ease; text-decoration: none; box-shadow: 0 4px 20px rgba(0,0,0,0.4);" onmouseover="this.style.color='var(--accent-color)';this.style.borderColor='var(--accent-color)';this.style.transform='scale(1.1)'" onmouseout="this.style.color='var(--text-secondary)';this.style.borderColor='rgba(255,255,255,0.1)';this.style.transform='scale(1)'"><i class="fas fa-cog"></i></a>
+    <!-- FIX MED-3: Admin FAB removed — do not advertise the admin panel to visitors. Access /admin directly. -->
 
     <footer class="footer">
         <div class="container" style="display: flex; justify-content: space-between; align-items: center;">
@@ -314,11 +344,11 @@ export function renderRegister(error: string = ''): string {
                 </div>
                 <div class="form-group">
                     <label class="form-label">Password</label>
-                    <input type="password" name="password" class="form-control" required minlength="6">
+                    <input type="password" name="password" class="form-control" required minlength="12">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Confirm Password</label>
-                    <input type="password" name="confirm_password" class="form-control" required minlength="6">
+                    <input type="password" name="confirm_password" class="form-control" required minlength="12">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Invite Code</label>
@@ -388,6 +418,7 @@ function adminSidebar(activePage: string, username: string): string {
         <li><a href="/admin/skills" class="${activePage === 'skills' ? 'active' : ''}">Skills</a></li>
         <li><a href="/admin/services" class="${activePage === 'services' ? 'active' : ''}">Services</a></li>
         <li><a href="/admin/messages" class="${activePage === 'messages' ? 'active' : ''}">Messages</a></li>
+        <li><a href="/admin/blog" class="${activePage === 'blog' ? 'active' : ''}">Blog Posts</a></li>
     </ul>
     <form method="POST" action="/logout">
         <button type="submit" class="logout-btn">Logout</button>
@@ -621,5 +652,298 @@ export function renderAdminMessages(messages: MessageRow[], username: string, ms
               `).join('')}
         </main>
     </div>
+</body></html>`;
+}
+
+// ─── Blog CSS ───
+const blogCss = `<style>
+    .blog-hero { padding: 8rem 0 4rem; text-align: center; border-bottom: 1px solid var(--border-color); margin-bottom: 4rem; }
+    .blog-hero-title { font-size: clamp(2.5rem, 6vw, 4rem); font-weight: 800; margin-bottom: 1rem; }
+    .blog-hero-sub { color: var(--text-secondary); font-size: 1.1rem; max-width: 480px; margin: 0 auto; }
+    .blog-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 2rem; }
+    .blog-card { background: rgba(26, 26, 26, 0.45); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 20px; overflow: hidden; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease, border-color 0.3s ease, background-color 0.3s ease; text-decoration: none; display: block; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2); }
+    .blog-card:hover { transform: translateY(-6px); box-shadow: 0 24px 60px rgba(0,0,0,0.5); border-color: rgba(52, 211, 153, 0.35); background: rgba(26, 26, 26, 0.65); }
+    .blog-card-image { width: 100%; height: 210px; object-fit: cover; }
+    .blog-card-image-placeholder { width: 100%; height: 210px; background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(52,211,153,0.06) 100%); display: flex; align-items: center; justify-content: center; font-size: 3rem; }
+    .blog-card-body { padding: 1.75rem; }
+    .blog-card-tags { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.875rem; }
+    .blog-card-tag { font-size: 0.72rem; font-weight: 600; padding: 3px 10px; border-radius: 99px; background: rgba(52,211,153,0.1); color: var(--accent-color); border: 1px solid rgba(52,211,153,0.2); letter-spacing: 0.04em; text-transform: uppercase; }
+    .blog-card-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 0.75rem; color: var(--text-primary); line-height: 1.4; }
+    .blog-card-excerpt { color: var(--text-secondary); font-size: 0.9rem; line-height: 1.65; margin-bottom: 1.25rem; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    .blog-card-meta { display: flex; justify-content: space-between; align-items: center; color: var(--text-muted); font-size: 0.82rem; padding-top: 1rem; border-top: 1px solid var(--border-color); }
+    .blog-card-read { color: var(--accent-color); font-weight: 600; font-size: 0.88rem; }
+    .blog-empty { text-align: center; padding: 6rem 2rem; color: var(--text-secondary); grid-column: 1 / -1; }
+    .blog-empty h3 { font-size: 1.5rem; margin-bottom: 0.75rem; color: var(--text-primary); }
+    /* Single post */
+    .post-container { background: rgba(26, 26, 26, 0.45); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 24px; padding: 3rem; margin: 2rem auto 6rem; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3); }
+    @media (max-width: 768px) { .post-container { padding: 1.5rem; margin: 1rem auto 4rem; border-radius: 16px; } }
+    .post-cover { position: relative; height: 460px; overflow: hidden; border-radius: 24px; margin: 2rem auto 3rem; max-width: 900px; }
+    .post-cover img { width: 100%; height: 100%; object-fit: cover; }
+    .post-cover-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(8,8,8,0.7) 0%, transparent 60%); border-radius: 24px; }
+    .post-cover-placeholder { width: 100%; height: 100%; background: linear-gradient(135deg, var(--bg-secondary), rgba(52,211,153,0.08)); border-radius: 24px; display: flex; align-items: center; justify-content: center; font-size: 5rem; }
+    .post-header { max-width: 800px; margin: 0 auto 3rem; padding: 0 1.5rem; }
+    .post-back { display: inline-flex; align-items: center; gap: 0.5rem; color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem; transition: color 0.2s; text-decoration: none; }
+    .post-back:hover { color: var(--accent-color); }
+    .post-tags { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+    .post-title { font-size: clamp(1.75rem, 4vw, 3rem); font-weight: 800; line-height: 1.2; margin-bottom: 1.25rem; color: var(--text-primary); }
+    .post-meta { display: flex; gap: 2rem; flex-wrap: wrap; color: var(--text-muted); font-size: 0.88rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border-color); }
+    .post-body { max-width: 800px; margin: 0 auto; padding: 0 1.5rem 6rem; line-height: 1.85; font-size: 1.05rem; color: var(--text-secondary); }
+    .post-body h2 { color: var(--text-primary); font-size: 1.6rem; font-weight: 700; margin: 2.5rem 0 1rem; }
+    .post-body h3 { color: var(--text-primary); font-size: 1.25rem; font-weight: 600; margin: 2rem 0 0.75rem; }
+    .post-body p { margin-bottom: 1.5rem; }
+    .post-body a { color: var(--accent-color); text-decoration: underline; text-underline-offset: 3px; }
+    .post-body ul, .post-body ol { margin: 0 0 1.5rem 1.5rem; }
+    .post-body li { margin-bottom: 0.5rem; }
+    .post-body blockquote { border-left: 3px solid var(--accent-color); padding: 0.5rem 0 0.5rem 1.5rem; margin: 2rem 0; color: var(--text-muted); font-style: italic; }
+    .post-body code { background: var(--bg-card); padding: 2px 7px; border-radius: 5px; font-family: 'JetBrains Mono', monospace; font-size: 0.88em; border: 1px solid var(--border-color); }
+    .post-body pre { background: var(--bg-card); border: 1px solid var(--border-color); padding: 1.5rem; border-radius: 14px; overflow-x: auto; margin: 1.75rem 0; }
+    .post-body pre code { background: none; border: none; padding: 0; }
+    .post-body img { max-width: 100%; border-radius: 12px; margin: 1.5rem 0; }
+    .post-body hr { border: none; border-top: 1px solid var(--border-color); margin: 2.5rem 0; }
+</style>`;
+
+function blogNav(active: string = ''): string {
+    return `<nav class="glass main-nav">
+        <div class="container nav-container">
+            <a href="/" class="nav-logo"><img src="/assets/images/logo.jpg" alt="Nikunj Pateliya"></a>
+            <div class="nav-links">
+                <a href="/#work">Work</a>
+                <a href="/#services">Services</a>
+                <a href="/#about">About</a>
+                <a href="/blog" style="${active==='blog'?'color:var(--accent-color);':''}">Blog</a>
+                <a href="/#contact" class="btn">Let's Talk</a>
+            </div>
+        </div>
+    </nav>`;
+}
+
+// ─── Blog Listing Page ───
+export function renderBlog(posts: BlogPostRow[]): string {
+    const formatDate = (d: string) => {
+        try { return new Date(d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }); }
+        catch { return d; }
+    };
+    const readingTime = (content: string | null) => {
+        const words = (content || '').replace(/<[^>]+>/g, '').match(/\S+/g)?.length ?? 0;
+        return `${Math.max(1, Math.round(words / 200))} min read`;
+    };
+
+    const cards = posts.length > 0
+        ? posts.map(p => {
+            const tags = (p.tags || '').split(',').map(t => t.trim()).filter(Boolean);
+            let imgUrl = p.cover_image_url || '';
+            if (imgUrl && !imgUrl.startsWith('http') && !imgUrl.startsWith('/')) imgUrl = '/' + imgUrl;
+            const imgHtml = imgUrl
+                ? `<img src="${escapeHtml(imgUrl)}" alt="${escapeHtml(p.title)}" class="blog-card-image">`
+                : `<div class="blog-card-image-placeholder">✍️</div>`;
+            return `<a href="/blog/${escapeHtml(p.slug)}" class="blog-card">
+                ${imgHtml}
+                <div class="blog-card-body">
+                    ${tags.length ? `<div class="blog-card-tags">${tags.map(t => `<span class="blog-card-tag">${escapeHtml(t)}</span>`).join('')}</div>` : ''}
+                    <h2 class="blog-card-title">${escapeHtml(p.title)}</h2>
+                    ${p.excerpt ? `<p class="blog-card-excerpt">${escapeHtml(p.excerpt)}</p>` : ''}
+                    <div class="blog-card-meta">
+                        <span>${formatDate(p.created_at)}</span>
+                        <span class="blog-card-read">${readingTime(p.content)} &rarr;</span>
+                    </div>
+                </div>
+            </a>`;
+        }).join('')
+        : `<div class="blog-empty"><h3>No posts yet.</h3><p>Check back soon for new articles.</p></div>`;
+
+    return `${baseHead('Blog | Nikunj Pateliya', blogCss)}
+<body>
+    ${blogNav('blog')}
+    <div class="blog-hero">
+        <div class="container">
+            <p style="color:var(--accent-color);font-size:0.85rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:1rem;">Writing &amp; Thoughts</p>
+            <h1 class="blog-hero-title">The Blog</h1>
+            <p class="blog-hero-sub">Insights on web design, development, and the digital world.</p>
+        </div>
+    </div>
+    <main class="section" style="padding-top:0;">
+        <div class="container">
+            <div class="blog-grid">${cards}</div>
+        </div>
+    </main>
+    <footer class="footer">
+        <div class="container" style="display:flex;justify-content:space-between;align-items:center;">
+            <span>&copy; ${new Date().getFullYear()} Nikunj Pateliya. All rights reserved.</span>
+            <a href="/" style="color:var(--text-muted);font-size:0.85rem;">&larr; Portfolio</a>
+        </div>
+    </footer>
+    <script src="/assets/js/main.js"></script>
+</body></html>`;
+}
+
+// ─── Single Blog Post Page ───
+export function renderBlogPost(post: BlogPostRow): string {
+    const formatDate = (d: string) => {
+        try { return new Date(d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }); }
+        catch { return d; }
+    };
+    const words = (post.content || '').replace(/<[^>]+>/g, '').match(/\S+/g)?.length ?? 0;
+    const readingTime = Math.max(1, Math.round(words / 200));
+    const tags = (post.tags || '').split(',').map(t => t.trim()).filter(Boolean);
+    let imgUrl = post.cover_image_url || '';
+    if (imgUrl && !imgUrl.startsWith('http') && !imgUrl.startsWith('/')) imgUrl = '/' + imgUrl;
+
+    const coverHtml = imgUrl
+        ? `<div class="post-cover"><img src="${escapeHtml(imgUrl)}" alt="${escapeHtml(post.title)}"><div class="post-cover-overlay"></div></div>`
+        : `<div class="post-cover" style="max-width:900px;margin:2rem auto 3rem;"><div class="post-cover-placeholder">✍️</div></div>`;
+
+    return `${baseHead(`${escapeHtml(post.title)} | Blog | Nikunj Pateliya`, blogCss)}
+<body>
+    ${blogNav('blog')}
+    <main style="padding-top:5rem;">
+        <div class="container" style="max-width:900px;">
+            <div class="post-container">
+                <a href="/blog" class="post-back">&larr; Back to Blog</a>
+                ${coverHtml}
+                <div class="post-header" style="margin-top:2rem;margin-bottom:2rem;max-width:100%;padding:0;">
+                    ${tags.length ? `<div class="post-tags">${tags.map(t => `<span class="blog-card-tag">${escapeHtml(t)}</span>`).join('')}</div>` : ''}
+                    <h1 class="post-title" style="margin-bottom:1rem;">${escapeHtml(post.title)}</h1>
+                    <div class="post-meta" style="padding-bottom:1.5rem;">
+                        <span>&#128197; ${formatDate(post.created_at)}</span>
+                        <span>&#9203; ${readingTime} min read</span>
+                        ${tags.length ? `<span>&#127991; ${tags.slice(0, 3).map(t => escapeHtml(t)).join(', ')}</span>` : ''}
+                    </div>
+                </div>
+                <div class="post-body" style="padding:0;max-width:100%;">${post.content || '<p>No content yet.</p>'}</div>
+            </div>
+        </div>
+    </main>
+    <footer class="footer">
+        <div class="container" style="display:flex;justify-content:space-between;align-items:center;">
+            <span>&copy; ${new Date().getFullYear()} Nikunj Pateliya. All rights reserved.</span>
+            <a href="/blog" style="color:var(--text-muted);font-size:0.85rem;">&larr; Back to Blog</a>
+        </div>
+    </footer>
+    <script src="/assets/js/main.js"></script>
+</body></html>`;
+}
+
+// ─── Admin: Blog Post List ───
+export function renderAdminBlog(posts: BlogPostRow[], username: string, msg: string = ''): string {
+    const rows = posts.length > 0
+        ? posts.map(p => `<tr>
+            <td style="font-weight:500;">${escapeHtml(p.title)}</td>
+            <td><code style="font-size:0.78rem;color:var(--text-muted);">/blog/${escapeHtml(p.slug)}</code></td>
+            <td>${(p.tags || '').split(',').filter(Boolean).slice(0, 2).map(t => `<span class="tag" style="font-size:0.75rem;">${escapeHtml(t.trim())}</span>`).join(' ')}</td>
+            <td><span style="color:${p.is_published ? 'var(--accent-color)' : 'var(--text-muted)'};font-weight:600;">${p.is_published ? '&#10003; Published' : '&#9675; Draft'}</span></td>
+            <td>
+                <a href="/admin/blog/edit?id=${p.id}" class="action-btn btn-edit">Edit</a>
+                <form method="POST" action="/admin/blog/delete" style="display:inline;" onsubmit="return confirm('Delete this post?');">
+                    <input type="hidden" name="id" value="${p.id}">
+                    <button type="submit" class="action-btn btn-delete">Delete</button>
+                </form>
+            </td>
+        </tr>`).join('')
+        : `<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--text-secondary);">No blog posts yet. Write your first one!</td></tr>`;
+
+    return `${baseHead('Blog Posts | Admin', adminCss)}<body>
+    <div class="admin-layout">
+        ${adminSidebar('blog', username)}
+        <main class="main-content">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem;">
+                <h1>Blog Posts</h1>
+                <a href="/admin/blog/edit" class="btn">Write New Post</a>
+            </div>
+            ${msg ? `<div class="alert-success">${escapeHtml(msg)}</div>` : ''}
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Title</th><th>Slug</th><th>Tags</th><th>Status</th><th>Actions</th></tr></thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+</body></html>`;
+}
+
+// ─── Admin: Blog Post Form (Create / Edit) ───
+export function renderBlogPostForm(post: BlogPostRow | null, username: string): string {
+    const isEdit = !!post;
+    const formTitle = isEdit ? 'Edit Post' : 'Write New Post';
+    const extraCss = adminCss + `<style>
+        .editor { min-height: 420px; font-family: 'JetBrains Mono', monospace; font-size: 0.88rem; line-height: 1.6; resize: vertical; }
+        .slug-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+        .slug-hint { color: var(--text-muted); font-size: 0.78rem; margin-top: 0.35rem; }
+        @media (max-width: 640px) { .slug-row { grid-template-columns: 1fr; } }
+    </style>`;
+    return `${baseHead(`${formTitle} | Admin`, extraCss)}<body>
+    <div class="admin-layout">
+        ${adminSidebar('blog', username)}
+        <main class="main-content" style="max-width:1050px;">
+            <h1 style="margin-bottom:2rem;">${formTitle}</h1>
+            <form method="POST" action="/admin/blog/save" style="display:grid;gap:1.5rem;">
+                ${isEdit ? `<input type="hidden" name="id" value="${post!.id}">` : ''}
+                <div class="slug-row">
+                    <div class="form-group">
+                        <label class="form-label">Post Title</label>
+                        <input type="text" id="post-title" name="title" class="form-control" required
+                            value="${escapeHtml(post?.title || '')}" oninput="autoSlug(this.value)">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Slug (URL)</label>
+                        <input type="text" id="post-slug" name="slug" class="form-control" required
+                            value="${escapeHtml(post?.slug || '')}" placeholder="my-awesome-post">
+                        <p class="slug-hint">yoursite.com/blog/<span id="slug-preview">${escapeHtml(post?.slug || 'my-awesome-post')}</span></p>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Excerpt <span style="color:var(--text-muted);font-weight:400;">(short summary shown in cards)</span></label>
+                    <textarea name="excerpt" class="form-control" rows="2"
+                        placeholder="A brief, compelling summary of your post...">${escapeHtml(post?.excerpt || '')}</textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Content <span style="color:var(--text-muted);font-weight:400;">(HTML supported)</span></label>
+                    <textarea name="content" class="form-control editor"
+                        placeholder="&lt;p&gt;Start writing your post...&lt;/p&gt;">${escapeHtml(post?.content || '')}</textarea>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
+                    <div class="form-group">
+                        <label class="form-label">Cover Image URL</label>
+                        <input type="text" name="cover_image_url" class="form-control"
+                            value="${escapeHtml(post?.cover_image_url || '')}" placeholder="https://... or /assets/images/...">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Tags <span style="color:var(--text-muted);font-weight:400;">(comma separated)</span></label>
+                        <input type="text" name="tags" class="form-control"
+                            value="${escapeHtml(post?.tags || '')}" placeholder="Web Design, React, CSS">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+                        <input type="checkbox" name="is_published" ${post?.is_published ? 'checked' : ''}>
+                        Publish this post (visible on /blog)
+                    </label>
+                </div>
+                <div style="display:flex;gap:1rem;">
+                    <button type="submit" class="btn">Save Post</button>
+                    <a href="/admin/blog" class="btn btn-outline" style="border:1px solid var(--border-color);">Cancel</a>
+                    ${isEdit && post!.is_published ? `<a href="/blog/${escapeHtml(post!.slug)}" target="_blank" class="btn btn-outline" style="border:1px solid var(--border-color);">View Live &rarr;</a>` : ''}
+                </div>
+            </form>
+        </main>
+    </div>
+    <script>
+        function autoSlug(val) {
+            const el = document.getElementById('post-slug');
+            if (el._edited) return;
+            el.value = val.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+            updatePreview();
+        }
+        function updatePreview() {
+            const el = document.getElementById('post-slug');
+            const prev = document.getElementById('slug-preview');
+            if (prev) prev.textContent = el.value || 'my-awesome-post';
+        }
+        document.getElementById('post-slug').addEventListener('input', function() {
+            this._edited = true;
+            updatePreview();
+        });
+        updatePreview();
+    </script>
 </body></html>`;
 }

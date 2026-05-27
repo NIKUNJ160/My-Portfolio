@@ -6,16 +6,12 @@ import type { Env, SessionPayload, Variables } from './env';
 const COOKIE_NAME = 'session_token';
 
 // --- Constant-time comparison helper ---
-
+// FIX LOW-1: No early exit on length mismatch — length difference is folded into result.
 function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
-    if (a.length !== b.length) {
-        // Run dummy loop to minimize timing leak, though length usually leaks anyway.
-        // For strings, we'll handle length mismatch before calling this.
-        return false;
-    }
-    let res = 0;
-    for (let i = 0; i < a.length; i++) {
-        res |= a[i] ^ b[i];
+    const len = Math.max(a.length, b.length);
+    let res = a.length ^ b.length; // length mismatch contributes to result
+    for (let i = 0; i < len; i++) {
+        res |= (a[i] ?? 0) ^ (b[i] ?? 0);
     }
     return res === 0;
 }
@@ -37,8 +33,9 @@ export async function hashPassword(password: string): Promise<string> {
     const keyMaterial = await crypto.subtle.importKey(
         'raw', encoder.encode(password), 'PBKDF2', false, ['deriveBits']
     );
+    // FIX MED-2: 210,000 iterations per NIST SP 800-132 (2023) recommendation
     const hash = await crypto.subtle.deriveBits(
-        { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+        { name: 'PBKDF2', salt, iterations: 210000, hash: 'SHA-256' },
         keyMaterial, 256
     );
     const saltHex = Array.from(salt).map(b => b.toString(16).padStart(2, '0')).join('');
@@ -59,8 +56,9 @@ export async function verifyPassword(password: string, stored: string): Promise<
     const keyMaterial = await crypto.subtle.importKey(
         'raw', encoder.encode(password), 'PBKDF2', false, ['deriveBits']
     );
+    // FIX MED-2: Same iteration count as hashPassword
     const hash = await crypto.subtle.deriveBits(
-        { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+        { name: 'PBKDF2', salt, iterations: 210000, hash: 'SHA-256' },
         keyMaterial, 256
     );
 
@@ -100,7 +98,9 @@ export async function createSessionToken(userId: number, username: string, secre
         sub: userId,
         username,
         iat: Math.floor(Date.now() / 1000),
-        exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60) // 7 days
+        // FIX MED-1: Reduced from 7 days to 2 hours to limit stolen-token window.
+        // For full invalidation, add a KV-backed token blocklist (see README).
+        exp: Math.floor(Date.now() / 1000) + (2 * 60 * 60) // 2 hours
     });
     const signature = await createHmac(`${header}.${payload}`, secretKey);
     const signatureHex = Array.from(signature).map(b => b.toString(16).padStart(2, '0')).join('');
@@ -130,6 +130,30 @@ export async function verifySessionToken(token: string, secretKey: string): Prom
     }
 }
 
+// --- CSRF Tokens (time-windowed HMAC, 1-hour windows) ---
+// FIX CRIT-1: Replaces the hardcoded 'fixed-csrf-token-for-now' with a real HMAC token.
+// Token is derived from a per-hour window + JWT_SECRET_KEY — no server state needed.
+
+export async function generateCsrfToken(secret: string): Promise<string> {
+    const window = Math.floor(Date.now() / (1000 * 60 * 60));
+    const sig = await createHmac(`csrf:${window}`, secret);
+    return Array.from(sig).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+export async function verifyCsrfToken(token: string, secret: string): Promise<boolean> {
+    if (!token) return false;
+    const now = Math.floor(Date.now() / (1000 * 60 * 60));
+    // Accept current and previous window to handle hour-boundary edge cases
+    for (const w of [now, now - 1]) {
+        const sig = await createHmac(`csrf:${w}`, secret);
+        const expected = Array.from(sig).map(b => b.toString(16).padStart(2, '0')).join('');
+        const a = new TextEncoder().encode(expected);
+        const b = new TextEncoder().encode(token);
+        if (timingSafeEqual(a, b)) return true;
+    }
+    return false;
+}
+
 // --- Cookie Helpers ---
 
 export function getSessionCookie(cookieHeader: string | undefined): string | null {
@@ -141,12 +165,12 @@ export function getSessionCookie(cookieHeader: string | undefined): string | nul
 }
 
 export function setSessionCookie(token: string): string {
-    // Always include Secure flag as Workers usually run on HTTPS
-    return `${COOKIE_NAME}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${7 * 24 * 60 * 60}; Secure`;
+    // FIX: SameSite=Strict (was Lax) — admin panel never needs cross-site cookie sending
+    return `${COOKIE_NAME}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${2 * 60 * 60}; Secure`;
 }
 
 export function clearSessionCookie(): string {
-    return `${COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0; Secure`;
+    return `${COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0; Secure`;
 }
 
 // --- Auth Middleware ---

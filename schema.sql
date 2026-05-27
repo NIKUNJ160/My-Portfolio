@@ -48,3 +48,17 @@ CREATE TABLE IF NOT EXISTS services (
     icon TEXT,
     created_at TEXT DEFAULT (datetime('now'))
 );
+
+-- Blog Posts table
+CREATE TABLE IF NOT EXISTS blog_posts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    slug TEXT NOT NULL UNIQUE,
+    excerpt TEXT,
+    content TEXT,
+    cover_image_url TEXT,
+    tags TEXT,
+    is_published INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+);

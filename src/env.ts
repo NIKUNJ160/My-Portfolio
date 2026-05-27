@@ -63,3 +63,16 @@ export interface UserRow {
     password_hash: string;
     created_at: string;
 }
+
+export interface BlogPostRow {
+    id: number;
+    title: string;
+    slug: string;
+    excerpt: string | null;
+    content: string | null;
+    cover_image_url: string | null;
+    tags: string | null;
+    is_published: number;
+    created_at: string;
+    updated_at: string;
+}
