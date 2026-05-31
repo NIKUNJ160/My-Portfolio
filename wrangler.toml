@@ -2,7 +2,7 @@ name = "my-portfolio"
 main = "src/index.ts"
 compatibility_date = "2024-12-01"
 
-# Production Optimization
+# Production Performance Defaults
 minify = true
 
 [placement]
@@ -17,10 +17,40 @@ database_name = "portfolio-db"
 database_id = "d9e46eaa-6f5f-428c-98e2-b67f4da500ba"
 
 [vars]
-# FIX CRIT-2: Registration disabled by default. Enable temporarily via Cloudflare
-# dashboard (Workers > Settings > Variables) when you need to create an account,
-# then set back to "false". Never commit "true" to a public repository.
 ALLOW_REGISTRATION = "false"
-# NOTE: JWT_SECRET_KEY and INVITE_CODE must be set as encrypted Secrets,
-# NOT as [vars]. Use: wrangler secret put JWT_SECRET_KEY
-#                      wrangler secret put INVITE_CODE
+
+# ─── Production Deployment Configuration ───
+# Ensures absolute consistency when deploying with '--env production' (e.g. via CI/CD pipelines)
+[env.production]
+name = "my-portfolio"
+compatibility_date = "2024-12-01"
+minify = true
+
+[env.production.placement]
+mode = "smart"
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "portfolio-db"
+database_id = "d9e46eaa-6f5f-428c-98e2-b67f4da500ba"
+
+[env.production.vars]
+ALLOW_REGISTRATION = "false"
+
+# ─── Staging Deployment Configuration ───
+# For previewing changes safely prior to live production releases
+[env.staging]
+name = "my-portfolio-staging"
+compatibility_date = "2024-12-01"
+minify = true
+
+[env.staging.placement]
+mode = "smart"
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "portfolio-db"
+database_id = "d9e46eaa-6f5f-428c-98e2-b67f4da500ba"
+
+[env.staging.vars]
+ALLOW_REGISTRATION = "false"
