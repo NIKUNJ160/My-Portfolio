@@ -4,8 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "wrangler dev",
+    "build": "npm run typecheck",
     "deploy": "wrangler deploy",
     "db:init": "wrangler d1 execute portfolio-db --local --file=schema.sql",
+    "db:deploy": "wrangler d1 execute portfolio-db --remote --file=schema.sql",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
