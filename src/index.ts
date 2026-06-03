@@ -96,20 +96,23 @@ async function loadPortfolioData(db: Env['DB']) {
 // PUBLIC ROUTES
 // ═══════════════════════════════════════
 
-// Pinterest Verification
-app.get('/pinterest-12995.html', (c) => {
-    return c.text('pinterest-site-verification=129956d073186271cd7fcf5315605557');
+// API Endpoint for portfolio data
+app.get('/api/portfolio-data', async (c) => {
+    const db = c.env.DB;
+    const { projects, skillsByCategory } = await loadPortfolioData(db);
+    const recentPostsResult = await db.prepare('SELECT * FROM blog_posts WHERE is_published = 1 ORDER BY created_at DESC LIMIT 3').all<BlogPostRow>();
+    return c.json({
+        projects,
+        skillsByCategory,
+        recentPosts: recentPostsResult.results || []
+    });
 });
 
 // Portfolio Home
 app.get('/', async (c) => {
-    const db = c.env.DB;
-    const { projects, skillsByCategory } = await loadPortfolioData(db);
-    // FIX CRIT-1: Generate a real per-hour HMAC CSRF token
+    // Generate a real per-hour HMAC CSRF token
     const csrfToken = await generateCsrfToken(c.env.JWT_SECRET_KEY);
-    // Load recent published blog posts (limit 3) for the homepage preview
-    const recentPostsResult = await db.prepare('SELECT * FROM blog_posts WHERE is_published = 1 ORDER BY created_at DESC LIMIT 3').all<BlogPostRow>();
-    return c.html(renderPortfolio(projects, skillsByCategory, false, '', csrfToken, recentPostsResult.results || []));
+    return c.html(renderPortfolio(csrfToken));
 });
 
 // Blog Listing Route
@@ -137,10 +140,8 @@ app.post('/contact', async (c) => {
     // FIX HIGH-2: Rate limit — 5 submissions per IP per hour
     const ip = c.req.header('CF-Connecting-IP') ?? 'unknown';
     if (!rateLimit(`contact:${ip}`, 5, 3600)) {
-        const { projects, skillsByCategory } = await loadPortfolioData(db);
         const csrf = await generateCsrfToken(c.env.JWT_SECRET_KEY);
-        const recentPostsResult = await db.prepare('SELECT * FROM blog_posts WHERE is_published = 1 ORDER BY created_at DESC LIMIT 3').all<BlogPostRow>();
-        return c.html(renderPortfolio(projects, skillsByCategory, false, 'Too many submissions. Please try again later.', csrf, recentPostsResult.results || []));
+        return c.html(renderPortfolio(csrf, false, 'Too many submissions. Please try again later.'));
     }
 
     const form = await parseForm(c);
@@ -148,10 +149,8 @@ app.post('/contact', async (c) => {
 
     // FIX CRIT-1: Verify HMAC CSRF token — no more hardcoded string
     if (!csrfToken || !(await verifyCsrfToken(String(csrfToken), c.env.JWT_SECRET_KEY))) {
-        const { projects, skillsByCategory } = await loadPortfolioData(db);
         const csrf = await generateCsrfToken(c.env.JWT_SECRET_KEY);
-        const recentPostsResult = await db.prepare('SELECT * FROM blog_posts WHERE is_published = 1 ORDER BY created_at DESC LIMIT 3').all<BlogPostRow>();
-        return c.html(renderPortfolio(projects, skillsByCategory, false, 'Invalid request. Please refresh and try again.', csrf, recentPostsResult.results || []));
+        return c.html(renderPortfolio(csrf, false, 'Invalid request. Please refresh and try again.'));
     }
 
     // FIX HIGH-4 & HIGH-5: Length validation + server-side email format check
@@ -160,10 +159,8 @@ app.post('/contact', async (c) => {
     const messageStr = String(form.message ?? '').trim();
 
     const reRenderError = async (msg: string) => {
-        const { projects, skillsByCategory } = await loadPortfolioData(db);
         const csrf = await generateCsrfToken(c.env.JWT_SECRET_KEY);
-        const recentPostsResult = await db.prepare('SELECT * FROM blog_posts WHERE is_published = 1 ORDER BY created_at DESC LIMIT 3').all<BlogPostRow>();
-        return c.html(renderPortfolio(projects, skillsByCategory, false, msg, csrf, recentPostsResult.results || []));
+        return c.html(renderPortfolio(csrf, false, msg));
     };
 
     if (!nameStr || !emailStr || !messageStr) {
@@ -187,10 +184,8 @@ app.post('/contact', async (c) => {
     try {
         await db.prepare('INSERT INTO messages (name, email, message) VALUES (?, ?, ?)')
             .bind(nameStr, emailStr, messageStr).run();
-        const { projects, skillsByCategory } = await loadPortfolioData(db);
         const csrf = await generateCsrfToken(c.env.JWT_SECRET_KEY);
-        const recentPostsResult = await db.prepare('SELECT * FROM blog_posts WHERE is_published = 1 ORDER BY created_at DESC LIMIT 3').all<BlogPostRow>();
-        return c.html(renderPortfolio(projects, skillsByCategory, true, '', csrf, recentPostsResult.results || []));
+        return c.html(renderPortfolio(csrf, true, ''));
     } catch {
         return reRenderError('Something went wrong. Please try again later.');
     }

@@ -38,69 +38,110 @@ function baseHead(title: string, extraCss: string = ''): string {
 type SkillsByCategory = Record<string, SkillRow[]>;
 
 export function renderPortfolio(
-    projects: ProjectRow[],
-    skillsByCategory: SkillsByCategory,
-    messageSent: boolean = false,
-    errorMsg: string = '',
     csrfToken: string = '',
-    recentPosts: BlogPostRow[] = []
+    messageSent: boolean = false,
+    errorMsg: string = ''
 ): string {
-    const projectCards = projects.length > 0
-        ? projects.map(p => {
-            const tags = (p.tags || '').split(',').map(t => t.trim()).filter(Boolean);
-            let imgUrl = p.image_url || 'assets/images/placeholder.jpg';
-            if (imgUrl && !imgUrl.startsWith('http') && !imgUrl.startsWith('/')) {
-                imgUrl = '/' + imgUrl;
-            }
-            return `<article class="project-card">
-            <img src="${escapeHtml(imgUrl)}" alt="${escapeHtml(p.title)}" class="project-thumb">
+    const projectCardsSkeleton = `
+        <div class="project-card skeleton-card shimmer">
+            <div class="skeleton-thumb"></div>
             <div class="project-content">
                 <div class="project-tags">
-                    ${tags.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('')}
+                    <span class="tag skeleton-pill"></span>
+                    <span class="tag skeleton-pill"></span>
                 </div>
-                <h3 class="project-title">${escapeHtml(p.title)}</h3>
-                <p class="project-desc">${escapeHtml(p.description)}</p>
-                <a href="${escapeHtml(p.project_url)}" class="project-link">
-                    View Project <span>&rarr;</span>
-                </a>
+                <div class="skeleton-title"></div>
+                <div class="skeleton-text"></div>
+                <div class="skeleton-text" style="width: 80%;"></div>
+                <div class="skeleton-link"></div>
             </div>
-        </article>`;
-        }).join('')
-        : `<div class="project-card" style="grid-column: 1 / -1; text-align: center; padding: 4rem;">
-        <h3 class="project-title">Work in Progress</h3>
-        <p class="project-desc">Projects are currently being uploaded. Check back soon!</p>
-      </div>`;
+        </div>
+        <div class="project-card skeleton-card shimmer">
+            <div class="skeleton-thumb"></div>
+            <div class="project-content">
+                <div class="project-tags">
+                    <span class="tag skeleton-pill"></span>
+                    <span class="tag skeleton-pill"></span>
+                </div>
+                <div class="skeleton-title"></div>
+                <div class="skeleton-text"></div>
+                <div class="skeleton-text" style="width: 80%;"></div>
+                <div class="skeleton-link"></div>
+            </div>
+        </div>
+        <div class="project-card skeleton-card shimmer">
+            <div class="skeleton-thumb"></div>
+            <div class="project-content">
+                <div class="project-tags">
+                    <span class="tag skeleton-pill"></span>
+                    <span class="tag skeleton-pill"></span>
+                </div>
+                <div class="skeleton-title"></div>
+                <div class="skeleton-text"></div>
+                <div class="skeleton-text" style="width: 80%;"></div>
+                <div class="skeleton-link"></div>
+            </div>
+        </div>
+    `;
 
-    const skillsHtml = Object.keys(skillsByCategory).length > 0
-        ? Object.entries(skillsByCategory).map(([category, skills]) => `
-        <div class="skill-category">
-            <h4 class="skill-heading">${escapeHtml(category.charAt(0).toUpperCase() + category.slice(1))}</h4>
+    const skillsSkeleton = `
+        <div class="skill-category skeleton-card shimmer" style="border:none;background:none;padding:0;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;">
+            <div class="skeleton-heading"></div>
             <div class="skill-list">
-                ${skills.map(s => `<div class="skill-pill">${escapeHtml(s.name)}</div>`).join('')}
+                <div class="skeleton-pill" style="width:70px;height:34px;"></div>
+                <div class="skeleton-pill" style="width:85px;height:34px;"></div>
+                <div class="skeleton-pill" style="width:60px;height:34px;"></div>
+                <div class="skeleton-pill" style="width:90px;height:34px;"></div>
             </div>
-        </div>`).join('')
-        : `<div class="skill-category">
-        <h4 class="skill-heading">Frontend</h4>
-        <div class="skill-list">
-            <div class="skill-pill">HTML5</div><div class="skill-pill">CSS3</div>
-            <div class="skill-pill">JavaScript</div><div class="skill-pill">React</div>
-            <div class="skill-pill">Tailwind CSS</div>
         </div>
-      </div>
-      <div class="skill-category">
-        <h4 class="skill-heading">Backend</h4>
-        <div class="skill-list">
-            <div class="skill-pill">PHP</div><div class="skill-pill">MySQL</div>
-            <div class="skill-pill">Node.js</div><div class="skill-pill">Python</div>
+        <div class="skill-category skeleton-card shimmer" style="border:none;background:none;padding:0;margin-top:2rem;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;">
+            <div class="skeleton-heading"></div>
+            <div class="skill-list">
+                <div class="skeleton-pill" style="width:80px;height:34px;"></div>
+                <div class="skeleton-pill" style="width:65px;height:34px;"></div>
+                <div class="skeleton-pill" style="width:75px;height:34px;"></div>
+            </div>
         </div>
-      </div>
-      <div class="skill-category">
-        <h4 class="skill-heading">Tools</h4>
-        <div class="skill-list">
-            <div class="skill-pill">Git</div><div class="skill-pill">Figma</div>
-            <div class="skill-pill">VS Code</div>
+    `;
+
+    const blogPostsSkeleton = `
+        <div class="skeleton-card shimmer" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:16px;padding:1.75rem;min-height:220px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:none;">
+            <div>
+                <div class="skeleton-pill" style="width:60px;height:18px;margin-bottom:12px;"></div>
+                <div class="skeleton-title" style="height:20px;width:90%;margin-bottom:12px;border-radius:4px;"></div>
+                <div class="skeleton-text" style="height:12px;width:100%;margin-bottom:8px;border-radius:2px;"></div>
+                <div class="skeleton-text" style="height:12px;width:80%;margin-bottom:8px;border-radius:2px;"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding-top:12px;border-top:1px solid var(--border-color);margin-top:12px;">
+                <div class="skeleton-text" style="width:60px;height:12px;margin:0;border-radius:2px;"></div>
+                <div class="skeleton-text" style="width:80px;height:12px;margin:0;border-radius:2px;"></div>
+            </div>
         </div>
-      </div>`;
+        <div class="skeleton-card shimmer" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:16px;padding:1.75rem;min-height:220px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:none;">
+            <div>
+                <div class="skeleton-pill" style="width:60px;height:18px;margin-bottom:12px;"></div>
+                <div class="skeleton-title" style="height:20px;width:90%;margin-bottom:12px;border-radius:4px;"></div>
+                <div class="skeleton-text" style="height:12px;width:100%;margin-bottom:8px;border-radius:2px;"></div>
+                <div class="skeleton-text" style="height:12px;width:80%;margin-bottom:8px;border-radius:2px;"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding-top:12px;border-top:1px solid var(--border-color);margin-top:12px;">
+                <div class="skeleton-text" style="width:60px;height:12px;margin:0;border-radius:2px;"></div>
+                <div class="skeleton-text" style="width:80px;height:12px;margin:0;border-radius:2px;"></div>
+            </div>
+        </div>
+        <div class="skeleton-card shimmer" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:16px;padding:1.75rem;min-height:220px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:none;">
+            <div>
+                <div class="skeleton-pill" style="width:60px;height:18px;margin-bottom:12px;"></div>
+                <div class="skeleton-title" style="height:20px;width:90%;margin-bottom:12px;border-radius:4px;"></div>
+                <div class="skeleton-text" style="height:12px;width:100%;margin-bottom:8px;border-radius:2px;"></div>
+                <div class="skeleton-text" style="height:12px;width:80%;margin-bottom:8px;border-radius:2px;"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding-top:12px;border-top:1px solid var(--border-color);margin-top:12px;">
+                <div class="skeleton-text" style="width:60px;height:12px;margin:0;border-radius:2px;"></div>
+                <div class="skeleton-text" style="width:80px;height:12px;margin:0;border-radius:2px;"></div>
+            </div>
+        </div>
+    `;
 
     const successBanner = messageSent
         ? `<div style="background: rgba(52, 211, 153, 0.1); color: var(--accent-color); padding: 1rem; border-radius: 8px; margin-bottom: 2rem; text-align: center; border: 1px solid rgba(52, 211, 153, 0.2);">
@@ -114,6 +155,9 @@ export function renderPortfolio(
 
     return `${baseHead('Nikunj Pateliya | Web Designer & Full-Stack Developer')}
 <body>
+    <!-- Top Progress Bar Preloader -->
+    <div id="page-progress" class="progress-bar"></div>
+
     <!-- Fixed Status Pill -->
     <div class="status-pill">
         <span>●</span> Open to Work
@@ -156,8 +200,8 @@ export function renderPortfolio(
     <section id="work" class="section">
         <div class="container">
             <h2 style="margin-bottom: 2rem; font-size: 2.5rem;">Selected Work</h2>
-            <div class="bento-grid">
-                ${projectCards}
+            <div id="projects-container" class="bento-grid">
+                ${projectCardsSkeleton}
             </div>
         </div>
     </section>
@@ -196,15 +240,15 @@ export function renderPortfolio(
                     <p>With a deep understanding of modern web technologies, I help startups and established businesses build their digital legacy. My approach is user-first, focusing on clean code, accessibility, and pixel-perfect design.</p>
                     <p>When I'm not coding, you can find me exploring new tech trends, contributing to open source, or gaming.</p>
                 </div>
-                <div class="skills-container">
-                    ${skillsHtml}
+                <div id="skills-container" class="skills-container">
+                    ${skillsSkeleton}
                 </div>
             </div>
         </div>
     </section>
 
     <!-- Blog Preview Section -->
-    ${recentPosts.length > 0 ? `<section id="blog" class="section">
+    <section id="blog" class="section" style="display: none;">
         <div class="container">
             <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:3rem;flex-wrap:wrap;gap:1rem;">
                 <div>
@@ -213,23 +257,11 @@ export function renderPortfolio(
                 </div>
                 <a href="/blog" style="color:var(--accent-color);font-weight:600;font-size:0.95rem;">View All Posts &rarr;</a>
             </div>
-            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1.5rem;">
-                ${recentPosts.map(p => {
-                    const rt = Math.max(1, Math.round(((p.content||'').replace(/<[^>]+>/g,'').match(/\\S+/g)||[]).length/200));
-                    const d = (() => { try { return new Date(p.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); } catch { return p.created_at; } })();
-                    const ptags = (p.tags||'').split(',').map(t=>t.trim()).filter(Boolean);
-                    return `<a href="/blog/${escapeHtml(p.slug)}" style="display:block;background:var(--bg-card);border:1px solid var(--border-color);border-radius:16px;padding:1.75rem;text-decoration:none;transition:all 0.3s ease;">
-                        ${ptags.length?`<div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-bottom:0.75rem;">${ptags.slice(0,2).map(t=>`<span style="font-size:0.72rem;font-weight:600;padding:2px 8px;border-radius:99px;background:rgba(52,211,153,0.1);color:var(--accent-color);text-transform:uppercase;">${escapeHtml(t)}</span>`).join('')}</div>`:''}
-                        <h3 style="font-size:1.1rem;font-weight:700;color:var(--text-primary);margin-bottom:0.6rem;line-height:1.4;">${escapeHtml(p.title)}</h3>
-                        ${p.excerpt?`<p style="color:var(--text-secondary);font-size:0.88rem;line-height:1.6;margin-bottom:1rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${escapeHtml(p.excerpt)}</p>`:''}
-                        <div style="display:flex;justify-content:space-between;color:var(--text-muted);font-size:0.8rem;padding-top:0.875rem;border-top:1px solid var(--border-color);">
-                            <span>${d}</span><span style="color:var(--accent-color);font-weight:600;">${rt} min read &rarr;</span>
-                        </div>
-                    </a>`;
-                }).join('')}
+            <div id="blog-posts-container" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1.5rem;">
+                ${blogPostsSkeleton}
             </div>
         </div>
-    </section>` : ''}
+    </section>
 
     <!-- Contact Section -->
     <section id="contact" class="section" style="margin-bottom: 4rem;">

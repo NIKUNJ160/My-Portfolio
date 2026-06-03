@@ -33,9 +33,9 @@ export async function hashPassword(password: string): Promise<string> {
     const keyMaterial = await crypto.subtle.importKey(
         'raw', encoder.encode(password), 'PBKDF2', false, ['deriveBits']
     );
-    // FIX MED-2: 210,000 iterations per NIST SP 800-132 (2023) recommendation
+    // FIX MED-2: 100,000 iterations (maximum supported by Cloudflare Workers runtime)
     const hash = await crypto.subtle.deriveBits(
-        { name: 'PBKDF2', salt, iterations: 210000, hash: 'SHA-256' },
+        { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
         keyMaterial, 256
     );
     const saltHex = Array.from(salt).map(b => b.toString(16).padStart(2, '0')).join('');
@@ -56,9 +56,9 @@ export async function verifyPassword(password: string, stored: string): Promise<
     const keyMaterial = await crypto.subtle.importKey(
         'raw', encoder.encode(password), 'PBKDF2', false, ['deriveBits']
     );
-    // FIX MED-2: Same iteration count as hashPassword
+    // FIX MED-2: Same iteration count as hashPassword (100,000)
     const hash = await crypto.subtle.deriveBits(
-        { name: 'PBKDF2', salt, iterations: 210000, hash: 'SHA-256' },
+        { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
         keyMaterial, 256
     );
 
