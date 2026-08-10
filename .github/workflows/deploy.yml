@@ -10,6 +10,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     name: Build & Deploy Portfolio
+    env:
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
 
     steps:
       - name: Checkout Repository
@@ -18,7 +20,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 20
           cache: 'npm'
 
       - name: Install Dependencies
