@@ -27,6 +27,7 @@
     /* Typography */
     --font-heading: 'Inter', system-ui, -apple-system, sans-serif;
     --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+    --font-heading-outfit: 'Outfit', system-ui, -apple-system, sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
 
     /* Spacing & Layout */
@@ -166,16 +167,16 @@ body {
 }
 
 h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-    font-family: var(--font-heading);
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    color: var(--text-primary);
-}
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        font-family: var(--font-heading-outfit);
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: var(--text-primary);
+    }
 
 a {
     color: var(--text-primary);
@@ -384,10 +385,7 @@ a:hover {
     font-size: clamp(3.5rem, 6.5vw, 6rem);
     line-height: 1.1;
     margin-bottom: 1.5rem;
-    background: linear-gradient(to bottom right, #FFFFFF 40%, #888888 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: var(--text-primary);
     font-weight: 800;
     letter-spacing: -0.03em;
 }
@@ -421,7 +419,7 @@ a:hover {
     border: 1px solid var(--border-glass);
     overflow: hidden;
     position: relative;
-    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.4s, box-shadow 0.4s, background 0.4s;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s, box-shadow 0.2s, background 0.2s;
     display: flex;
     flex-direction: column;
     height: 100%;
