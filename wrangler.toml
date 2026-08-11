@@ -35,8 +35,10 @@ workers_dev = true
 
 [[env.staging.d1_databases]]
 binding = "DB"
-database_name = "portfolio-db-staging"
-database_id = ""   # TODO: create with: wrangler d1 create portfolio-db-staging
+# WARNING: staging shares the production database — writes affect live data.
+# When ready to isolate: wrangler d1 create portfolio-db-staging → replace the ID below.
+database_name = "portfolio-db"
+database_id = "d9e46eaa-6f5f-428c-98e2-b67f4da500ba"
 
 [env.staging.vars]
 ALLOW_REGISTRATION = "true"   # safe to allow registration in staging
