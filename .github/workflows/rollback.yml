@@ -1,0 +1,52 @@
+name: Rollback Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "Reason for rollback (required)"
+        required: true
+        type: string
+      deployment_id:
+        description: "Wrangler deployment ID to roll back to (leave blank for previous)"
+        required: false
+        type: string
+
+jobs:
+  rollback:
+    name: Rollback Worker Deployment
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production   # requires manual approval if environment protection is configured
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Rollback Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          # If deployment_id is provided, rolls back to that specific version.
+          # Otherwise, Cloudflare rolls back to the previous deployment.
+          command: >-
+            rollback ${{ inputs.deployment_id }}
+            --message "GitHub Actions rollback — ${{ inputs.reason }}"
+
+      - name: Record rollback in Job Summary
+        if: always()
+        run: |
+          echo "## 🔄 Rollback Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Triggered by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Reason:** ${{ inputs.reason }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target deployment:** ${{ inputs.deployment_id || 'previous' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Time:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY

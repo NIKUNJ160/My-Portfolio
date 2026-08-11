@@ -1,6 +1,7 @@
 name = "my-portfolio"
 main = "src/index.ts"
-compatibility_date = "2024-12-01"
+compatibility_date = "2026-07-01"   # updated from 2024-12-01 — review changelog before bumping further
+account_id = "c3d7e127857162bb4c591af8459673e3"
 
 # Production Performance Optimizations
 minify = true
@@ -24,3 +25,18 @@ ALLOW_REGISTRATION = "false"
 # NOTE: JWT_SECRET_KEY and INVITE_CODE must be set as encrypted Secrets,
 # NOT as [vars]. Use: wrangler secret put JWT_SECRET_KEY
 #                      wrangler secret put INVITE_CODE
+
+# ─── Staging environment ──────────────────────────────────────────────────────
+# Deploy with: wrangler deploy --env staging
+# Migrate DB:  wrangler d1 execute portfolio-db-staging --remote --file=schema.sql --env staging
+[env.staging]
+name = "my-portfolio-staging"
+workers_dev = true
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "portfolio-db-staging"
+database_id = ""   # TODO: create with: wrangler d1 create portfolio-db-staging
+
+[env.staging.vars]
+ALLOW_REGISTRATION = "true"   # safe to allow registration in staging
