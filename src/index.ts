@@ -417,9 +417,10 @@ app.post('/contact', async (c) => {
       body: `${message} (Reply to: ${email})`,
       status: 'new'
     });
-  } catch {}
-
-  return c.text('Thank you! Your message has been sent successfully. Go back to Home.');
+    return c.json({ ok: true, message: 'Your message has been sent! We\'ll get back to you soon.' });
+  } catch (err: any) {
+    return c.json({ ok: false, message: 'Something went wrong. Please try again.' }, 500);
+  }
 });
 
 /* --- User Authentication --- */

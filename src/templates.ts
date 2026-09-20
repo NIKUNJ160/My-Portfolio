@@ -325,16 +325,62 @@ export function homePage(data: { projects: any[]; skills: any[]; services: any[]
         <span class="section-tag">LET'S TALK</span>
         <h2 class="section-heading">Contact Us</h2>
       </div>
-      <form action="/contact" method="POST" class="glass contact-form" data-scroll data-track-event="contact_form_submit" data-track-category="conversion" data-track-label="contact_form">
+      <div id="contact-msg" style="display:none; padding:1rem 1.5rem; border-radius:10px; font-weight:600; font-size:0.95rem; text-align:center; margin-bottom:1.2rem;"></div>
+      <form id="contact-form" class="glass contact-form" data-scroll data-track-event="contact_form_submit" data-track-category="conversion" data-track-label="contact_form" novalidate>
         <div class="form-row">
           <input type="text" name="name" placeholder="Your Name" required class="form-input">
           <input type="email" name="email" placeholder="Your Email" required class="form-input">
         </div>
         <input type="tel" name="phone" placeholder="Your Phone Number" class="form-input">
         <textarea name="message" placeholder="Your Message" required class="form-textarea"></textarea>
-        <button type="submit" class="btn" style="align-self: center;">Send Message</button>
+        <button type="submit" id="contact-btn" class="btn" style="align-self: center;">Send Message</button>
       </form>
+      <script>
+        (function() {
+          var form = document.getElementById('contact-form');
+          var msgBox = document.getElementById('contact-msg');
+          var btn = document.getElementById('contact-btn');
+          if (!form) return;
+          form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (!form.checkValidity()) { form.reportValidity(); return; }
+            btn.disabled = true;
+            btn.textContent = 'Sending\u2026';
+            msgBox.style.display = 'none';
+            var data = new URLSearchParams(new FormData(form));
+            fetch('/contact', { method: 'POST', body: data })
+              .then(function(r) { return r.json(); })
+              .then(function(res) {
+                if (res.ok) {
+                  msgBox.textContent = res.message;
+                  msgBox.style.background = 'rgba(16,185,129,0.15)';
+                  msgBox.style.color = '#10B981';
+                  msgBox.style.border = '1px solid rgba(16,185,129,0.3)';
+                  form.reset();
+                } else {
+                  msgBox.textContent = res.message;
+                  msgBox.style.background = 'rgba(239,68,68,0.15)';
+                  msgBox.style.color = '#EF4444';
+                  msgBox.style.border = '1px solid rgba(239,68,68,0.3)';
+                }
+                msgBox.style.display = 'block';
+              })
+              .catch(function() {
+                msgBox.textContent = 'Network error. Please check your connection and try again.';
+                msgBox.style.background = 'rgba(239,68,68,0.15)';
+                msgBox.style.color = '#EF4444';
+                msgBox.style.border = '1px solid rgba(239,68,68,0.3)';
+                msgBox.style.display = 'block';
+              })
+              .finally(function() {
+                btn.disabled = false;
+                btn.textContent = 'Send Message';
+              });
+          });
+        })();
+      </script>
     </section>
+
 
     <footer class="copyrights" data-scroll-section>
       <div class="footer-container">
