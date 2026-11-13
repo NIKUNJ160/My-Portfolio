@@ -486,7 +486,18 @@ body.drawer-open {
 }
 
 .section-header {
+  margin-bottom: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+/* When section-header has only text (no filters), keep old spacing */
+.section-header:not(:has(.gallery-menu)) {
   margin-bottom: 50px;
+  display: block;
 }
 
 .section-tag {
@@ -658,21 +669,23 @@ body.drawer-open {
 /* Portfolio Section with Filter Controls */
 .gallery-menu {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   margin-top: 16px;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 .filter-btn {
   background: transparent;
   border: 1px solid var(--border-glass);
   color: var(--text-primary);
-  padding: 8px 24px;
+  padding: 6px 18px;
   border-radius: 99px;
   cursor: pointer;
   font-weight: 600;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   transition: var(--transition-smooth);
+  white-space: nowrap;
 }
 
 .filter-btn.active,
@@ -682,58 +695,125 @@ body.drawer-open {
   border-color: transparent;
 }
 
+/* ── Project Grid: strict 3-col × 2-row on desktop ── */
 .gallery-list {
+  container-type: inline-size;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
-  gap: clamp(1rem, 2.5cqi, 2rem);
-  margin-top: 40px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-top: 32px;
 }
 
+@container (max-width: 680px) {
+  .gallery-list { grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
+}
+@container (max-width: 420px) {
+  .gallery-list { grid-template-columns: 1fr; }
+}
+
+/* Card shell */
 .gallery-item {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 16px;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 14px;
   cursor: pointer;
-  transition: opacity 0.4s ease, transform 0.4s ease;
+  transition: transform 0.35s ease, box-shadow 0.35s ease, opacity 0.4s ease;
 }
 
 .gallery-item.hidden {
   display: none;
   opacity: 0;
-  transform: scale(0.9);
+  pointer-events: none;
 }
 
+.gallery-item:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 16px 40px rgba(0,0,0,0.25);
+}
+
+/* Image area */
 .gallery-image-wrapper {
   overflow: hidden;
-  border-radius: 16px;
+  border-radius: 0;
   aspect-ratio: 4/3;
+  position: relative;
 }
 
 .gallery-image {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: var(--transition-smooth);
+  transition: transform 0.45s ease;
+  display: block;
 }
 
 .gallery-item:hover .gallery-image {
-  transform: scale(1.05);
+  transform: scale(1.07);
 }
 
-.gallery-item:hover {
-  transform: translateY(-5px);
+/* Dark overlay + "View" CTA on hover */
+.gallery-image-wrapper::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.0) 55%);
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+}
+
+.gallery-item:hover .gallery-image-wrapper::after {
+  opacity: 1;
+}
+
+.gallery-hover-cta {
+  position: absolute;
+  bottom: 10px;
+  right: 12px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #fff;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  pointer-events: none;
+  z-index: 2;
+  text-transform: uppercase;
+}
+
+.gallery-item:hover .gallery-hover-cta {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Info strip below image */
+.gallery-info {
+  padding: 10px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 }
 
 .gallery-info h4 {
-  font-size: 1.15rem;
+  font-size: 0.95rem;
   font-weight: 700;
+  line-height: 1.25;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .gallery-category {
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: 0.68rem;
   color: var(--accent-color);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 /* Testimonials Section */

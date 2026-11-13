@@ -195,10 +195,11 @@ export function homePage(data: { projects: any[]; skills: any[]; services: any[]
 
   const portfolioList = (data.projects && data.projects.length > 0) ? data.projects : [];
   const portfolioHtml = portfolioList.length > 0
-    ? portfolioList.map((p: any) => `
+    ? portfolioList.slice(0, 6).map((p: any) => `
       <div class="glass gallery-item ${p.class_name || p.class || 'gal_a'}" data-scroll data-track-event="project_click" data-track-category="engagement" data-track-label="${p.title}">
         <div class="gallery-image-wrapper">
-          <img src="${p.image_url || p.img || '/assets/images/uploads/gallery_img-01.jpg'}" alt="${p.title}" class="gallery-image">
+          <img src="${p.image_url || p.img || '/assets/images/uploads/gallery_img-01.jpg'}" alt="${p.title}" class="gallery-image" loading="lazy">
+          <span class="gallery-hover-cta">View ↗</span>
         </div>
         <div class="gallery-info">
           <h4>${p.title}</h4>
@@ -283,18 +284,21 @@ export function homePage(data: { projects: any[]; skills: any[]; services: any[]
 
     <section id="portfolio" class="section-container" data-scroll-section>
       <div class="section-header">
-        <span class="section-tag">GALLERY</span>
-        <h2 class="section-heading">Projects Done</h2>
+        <div>
+          <span class="section-tag">GALLERY</span>
+          <h2 class="section-heading">Projects Done</h2>
+        </div>
         <div class="gallery-menu">
           <button class="active filter-btn" data-filter="all" data-track-event="portfolio_filter" data-track-category="interaction" data-track-label="all">All</button>
-          <button class="filter-btn" data-filter="gal_a" data-track-event="portfolio_filter" data-track-category="interaction" data-track-label="gal_a">Web Development</button>
-          <button class="filter-btn" data-filter="gal_b" data-track-event="portfolio_filter" data-track-category="interaction" data-track-label="gal_b">Creative Design</button>
-          <button class="filter-btn" data-filter="gal_c" data-track-event="portfolio_filter" data-track-category="interaction" data-track-label="gal_c">Graphic Design</button>
+          <button class="filter-btn" data-filter="gal_a" data-track-event="portfolio_filter" data-track-category="interaction" data-track-label="gal_a">Web Dev</button>
+          <button class="filter-btn" data-filter="gal_b" data-track-event="portfolio_filter" data-track-category="interaction" data-track-label="gal_b">Creative</button>
+          <button class="filter-btn" data-filter="gal_c" data-track-event="portfolio_filter" data-track-category="interaction" data-track-label="gal_c">Graphic</button>
         </div>
       </div>
       <div class="gallery-list">
         ${portfolioHtml}
       </div>
+      ${portfolioList.length > 6 ? `<div class="section-cta"><a href="#portfolio" class="btn-outline" onclick="document.querySelectorAll('.gallery-item.hidden').forEach(e=>e.style.display='flex'); this.style.display='none'; return false;">Show All ${portfolioList.length} Projects</a></div>` : ''}
     </section>
 
     <section id="testimonials" class="section-container" data-scroll-section>
