@@ -700,27 +700,29 @@ body.drawer-open {
   container-type: inline-size;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
-  margin-top: 32px;
+  gap: 1.1rem;
+  margin-top: 28px;
 }
 
-@container (max-width: 680px) {
-  .gallery-list { grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
+@container (max-width: 768px) {
+  .gallery-list { grid-template-columns: repeat(2, 1fr); gap: 0.9rem; }
 }
-@container (max-width: 420px) {
-  .gallery-list { grid-template-columns: 1fr; }
+@container (max-width: 480px) {
+  .gallery-list { grid-template-columns: 1fr; gap: 0.85rem; }
 }
 
-/* Card shell */
+/* Card shell - compact & user-friendly */
 .gallery-item {
   position: relative;
   display: flex;
   flex-direction: column;
   padding: 0;
   overflow: hidden;
-  border-radius: 14px;
+  border-radius: 12px;
   cursor: pointer;
-  transition: transform 0.35s ease, box-shadow 0.35s ease, opacity 0.4s ease;
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.28s ease, border-color 0.28s ease, opacity 0.35s ease;
 }
 
 .gallery-item.hidden {
@@ -729,39 +731,43 @@ body.drawer-open {
   pointer-events: none;
 }
 
-.gallery-item:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 16px 40px rgba(0,0,0,0.25);
+.gallery-item:hover,
+.gallery-item:focus-visible {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.26);
+  border-color: rgba(var(--accent-rgb, 120, 119, 198), 0.45);
+  outline: none;
 }
 
-/* Image area */
+/* Image area - strict 3 x 2 aspect ratio */
 .gallery-image-wrapper {
   overflow: hidden;
   border-radius: 0;
-  aspect-ratio: 4/3;
+  aspect-ratio: 3 / 2;
   position: relative;
+  background: rgba(0, 0, 0, 0.25);
 }
 
 .gallery-image {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.45s ease;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   display: block;
 }
 
 .gallery-item:hover .gallery-image {
-  transform: scale(1.07);
+  transform: scale(1.06);
 }
 
-/* Dark overlay + "View" CTA on hover */
+/* Dark overlay + "Quick View" CTA badge on hover */
 .gallery-image-wrapper::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.0) 55%);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.0) 55%);
   opacity: 0;
-  transition: opacity 0.35s ease;
+  transition: opacity 0.3s ease;
   pointer-events: none;
 }
 
@@ -771,15 +777,20 @@ body.drawer-open {
 
 .gallery-hover-cta {
   position: absolute;
-  bottom: 10px;
-  right: 12px;
-  font-size: 0.72rem;
+  bottom: 8px;
+  right: 10px;
+  font-size: 0.68rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   color: #fff;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
+  padding: 3px 9px;
+  border-radius: 99px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
   opacity: 0;
-  transform: translateY(6px);
-  transition: opacity 0.3s ease, transform 0.3s ease;
+  transform: translateY(4px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
   pointer-events: none;
   z-index: 2;
   text-transform: uppercase;
@@ -790,22 +801,23 @@ body.drawer-open {
   transform: translateY(0);
 }
 
-/* Info strip below image */
+/* Info strip below image - clean & compact */
 .gallery-info {
-  padding: 10px 12px 12px;
+  padding: 8px 12px 10px;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 3px;
 }
 
 .gallery-info h4 {
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   font-weight: 700;
   line-height: 1.25;
   margin: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: var(--text-primary);
 }
 
 .gallery-category {
@@ -814,6 +826,122 @@ body.drawer-open {
   color: var(--accent-color);
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  font-weight: 600;
+}
+
+/* ── Interactive Project Preview Modal ── */
+.project-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+
+.project-modal.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.project-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(10px);
+}
+
+.project-modal-dialog {
+  position: relative;
+  z-index: 1;
+  max-width: 580px;
+  width: 100%;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+  transform: scale(0.94);
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+}
+
+.project-modal.active .project-modal-dialog {
+  transform: scale(1);
+}
+
+.project-modal-media {
+  position: relative;
+  aspect-ratio: 3 / 2;
+  overflow: hidden;
+  background: #000;
+}
+
+.project-modal-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.project-modal-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 10;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 1.3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+  line-height: 1;
+  padding: 0;
+}
+
+.project-modal-close:hover {
+  background: rgba(0, 0, 0, 0.9);
+  transform: scale(1.1);
+}
+
+.project-modal-body {
+  padding: 1.15rem 1.4rem 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.project-modal-cat {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--accent-color);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.project-modal-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.project-modal-desc {
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  margin: 0;
 }
 
 /* Testimonials Section */

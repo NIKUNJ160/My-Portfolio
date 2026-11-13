@@ -4,6 +4,8 @@ document.addEventListener("DOMContentLoaded", () => {
   initMotion();
   initTypewriter();
   initGalleryFilter();
+  initProjectModal();
+  initProjectShowMore();
   initScrollLifecycle();
 });
 
@@ -305,6 +307,7 @@ function initTypewriter() {
 function initGalleryFilter() {
   const filterButtons = document.querySelectorAll(".filter-btn");
   const galleryItems = document.querySelectorAll(".gallery-item");
+  const toggleBtn = document.getElementById("toggleMoreProjects");
 
   filterButtons.forEach(btn => {
     btn.addEventListener("click", () => {
@@ -312,11 +315,19 @@ function initGalleryFilter() {
       btn.classList.add("active");
 
       const filterValue = btn.getAttribute("data-filter");
+      const isExpanded = toggleBtn && toggleBtn.getAttribute("data-expanded") === "true";
 
       galleryItems.forEach(item => {
-        if (filterValue === "all" || item.classList.contains(filterValue)) {
-          item.classList.remove("hidden");
-          gsap.fromTo(item, { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 0.4 });
+        const matchesFilter = filterValue === "all" || item.classList.contains(filterValue);
+        const isOverflow = item.getAttribute("data-overflow") === "true";
+
+        if (matchesFilter) {
+          if (filterValue === "all" && isOverflow && !isExpanded) {
+            item.classList.add("hidden");
+          } else {
+            item.classList.remove("hidden");
+            gsap.fromTo(item, { opacity: 0, scale: 0.94 }, { opacity: 1, scale: 1, duration: 0.35 });
+          }
         } else {
           item.classList.add("hidden");
         }
@@ -328,5 +339,103 @@ function initGalleryFilter() {
         }
       }, 120);
     });
+  });
+}
+
+function initProjectShowMore() {
+  const toggleBtn = document.getElementById("toggleMoreProjects");
+  if (!toggleBtn) return;
+
+  let expanded = false;
+  toggleBtn.addEventListener("click", () => {
+    expanded = !expanded;
+    toggleBtn.setAttribute("data-expanded", expanded ? "true" : "false");
+    const activeFilterBtn = document.querySelector(".filter-btn.active");
+    const currentFilter = activeFilterBtn ? activeFilterBtn.getAttribute("data-filter") : "all";
+
+    const allItems = document.querySelectorAll(".gallery-item");
+    allItems.forEach(item => {
+      const matchesFilter = currentFilter === "all" || item.classList.contains(currentFilter);
+      const isOverflow = item.getAttribute("data-overflow") === "true";
+
+      if (matchesFilter) {
+        if (isOverflow) {
+          if (expanded) {
+            item.classList.remove("hidden");
+            gsap.fromTo(item, { opacity: 0, scale: 0.94 }, { opacity: 1, scale: 1, duration: 0.35 });
+          } else {
+            item.classList.add("hidden");
+          }
+        } else {
+          item.classList.remove("hidden");
+        }
+      } else {
+        item.classList.add("hidden");
+      }
+    });
+
+    toggleBtn.innerHTML = expanded ? "Show Less &uarr;" : `Show All (${allItems.length}) &darr;`;
+
+    setTimeout(() => {
+      if (typeof ScrollTrigger !== "undefined") {
+        ScrollTrigger.refresh();
+      }
+    }, 150);
+  });
+}
+
+function initProjectModal() {
+  const modal = document.getElementById("projectModal");
+  if (!modal) return;
+
+  const backdrop = document.getElementById("projectModalBackdrop");
+  const closeBtn = document.getElementById("projectModalClose");
+  const modalImg = document.getElementById("projectModalImg");
+  const modalCat = document.getElementById("projectModalCat");
+  const modalTitle = document.getElementById("projectModalTitle");
+  const modalDesc = document.getElementById("projectModalDesc");
+
+  function openModal(item) {
+    const title = item.getAttribute("data-title") || "";
+    const cat = item.getAttribute("data-category") || "";
+    const img = item.getAttribute("data-img") || "";
+    const desc = item.getAttribute("data-desc") || "";
+
+    if (modalImg) {
+      modalImg.src = img;
+      modalImg.alt = title;
+    }
+    if (modalCat) modalCat.textContent = cat;
+    if (modalTitle) modalTitle.textContent = title;
+    if (modalDesc) modalDesc.textContent = desc;
+
+    modal.classList.add("active");
+    modal.setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeModal() {
+    modal.classList.remove("active");
+    modal.setAttribute("aria-hidden", "true");
+    document.body.style.overflow = "";
+  }
+
+  document.querySelectorAll(".gallery-item").forEach(item => {
+    item.addEventListener("click", () => openModal(item));
+    item.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        openModal(item);
+      }
+    });
+  });
+
+  if (closeBtn) closeBtn.addEventListener("click", closeModal);
+  if (backdrop) backdrop.addEventListener("click", closeModal);
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && modal.classList.contains("active")) {
+      closeModal();
+    }
   });
 }

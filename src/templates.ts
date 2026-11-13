@@ -193,21 +193,47 @@ export function homePage(data: { projects: any[]; skills: any[]; services: any[]
     `).join('')
     : `<p class="text-secondary" style="grid-column: 1 / -1; text-align: center; padding: 2rem;">No services listed yet.</p>`;
 
-  const portfolioList = (data.projects && data.projects.length > 0) ? data.projects : [];
-  const portfolioHtml = portfolioList.length > 0
-    ? portfolioList.slice(0, 6).map((p: any) => `
-      <div class="glass gallery-item ${p.class_name || p.class || 'gal_a'}" data-scroll data-track-event="project_click" data-track-category="engagement" data-track-label="${p.title}">
+  const defaultProjects = [
+    { title: 'Corporate Portal', category: 'Web Development', class_name: 'gal_a', image_url: '/assets/images/uploads/gallery_img-01.jpg', content: 'Modern enterprise dashboard with secure client authentication and real-time project management.' },
+    { title: 'Creative Layout', category: 'Creative Design', class_name: 'gal_b', image_url: '/assets/images/uploads/gallery_img-02.jpg', content: 'Bespoke design system featuring modular bento structures and custom fluid typography.' },
+    { title: 'Brand Identity', category: 'Graphic Design', class_name: 'gal_c', image_url: '/assets/images/uploads/gallery_img-03.jpg', content: 'Complete brand guidelines, modern vector typography, and digital asset kit.' },
+    { title: 'SaaS Dashboard', category: 'Web Development', class_name: 'gal_a', image_url: '/assets/images/uploads/gallery_img-04.jpg', content: 'High-performance metrics visualization interface with dark and light glassmorphism themes.' },
+    { title: 'E-commerce App', category: 'Web Development', class_name: 'gal_a', image_url: '/assets/images/uploads/gallery_img-05.jpg', content: 'Responsive edge-rendered store with fast checkout workflows and instant search.' },
+    { title: 'Digital Agency', category: 'Creative Design', class_name: 'gal_b', image_url: '/assets/images/uploads/gallery_img-06.jpg', content: 'Interactive showcase website with smooth GSAP animations and accessible navigation.' }
+  ];
+
+  const portfolioList = (data.projects && data.projects.length > 0) ? data.projects : defaultProjects;
+  const portfolioHtml = portfolioList.map((p: any, idx: number) => {
+    const title = p.title || 'Portfolio Project';
+    const cat = p.category || p.cat || 'Portfolio';
+    const img = p.image_url || p.img || '/assets/images/uploads/gallery_img-01.jpg';
+    const desc = p.content || p.description || p.desc || 'High-performance digital project crafted with modern web architecture and responsive design.';
+    const isOverflow = idx >= 6;
+    return `
+      <div class="glass gallery-item ${p.class_name || p.class || 'gal_a'} ${isOverflow ? 'hidden' : ''}" 
+           data-scroll 
+           data-overflow="${isOverflow ? 'true' : 'false'}"
+           data-title="${title.replace(/"/g, '&quot;')}" 
+           data-category="${cat.replace(/"/g, '&quot;')}" 
+           data-img="${img}" 
+           data-desc="${desc.replace(/"/g, '&quot;')}"
+           tabindex="0"
+           role="button"
+           aria-label="View project: ${title.replace(/"/g, '&quot;')}"
+           data-track-event="project_click" 
+           data-track-category="engagement" 
+           data-track-label="${title.replace(/"/g, '&quot;')}">
         <div class="gallery-image-wrapper">
-          <img src="${p.image_url || p.img || '/assets/images/uploads/gallery_img-01.jpg'}" alt="${p.title}" class="gallery-image" loading="lazy">
-          <span class="gallery-hover-cta">View ↗</span>
+          <img src="${img}" alt="${title.replace(/"/g, '&quot;')}" class="gallery-image" loading="lazy">
+          <span class="gallery-hover-cta">Quick View ↗</span>
         </div>
         <div class="gallery-info">
-          <h4>${p.title}</h4>
-          <span class="gallery-category">${p.category || p.cat || 'Portfolio'}</span>
+          <h4>${title}</h4>
+          <span class="gallery-category">${cat}</span>
         </div>
       </div>
-    `).join('')
-    : `<p class="text-secondary" style="grid-column: 1 / -1; text-align: center; padding: 2rem;">No portfolio projects added yet.</p>`;
+    `;
+  }).join('');
 
   const testimonialsList = (data.testimonials && data.testimonials.length > 0) ? data.testimonials : [];
   const testimonialsHtml = testimonialsList.length > 0
@@ -298,8 +324,29 @@ export function homePage(data: { projects: any[]; skills: any[]; services: any[]
       <div class="gallery-list">
         ${portfolioHtml}
       </div>
-      ${portfolioList.length > 6 ? `<div class="section-cta"><a href="#portfolio" class="btn-outline" onclick="document.querySelectorAll('.gallery-item.hidden').forEach(e=>e.style.display='flex'); this.style.display='none'; return false;">Show All ${portfolioList.length} Projects</a></div>` : ''}
+      ${portfolioList.length > 6 ? `
+        <div class="section-cta" style="margin-top: 1.5rem; text-align: center;">
+          <button id="toggleMoreProjects" class="btn-outline" style="font-size: 0.82rem; padding: 7px 22px; cursor: pointer;">
+            Show All (${portfolioList.length}) &darr;
+          </button>
+        </div>` : ''}
     </section>
+
+    <!-- Project Quick-View Modal -->
+    <div id="projectModal" class="project-modal" aria-hidden="true" role="dialog" aria-labelledby="projectModalTitle">
+      <div class="project-modal-backdrop" id="projectModalBackdrop"></div>
+      <div class="project-modal-dialog glass">
+        <button class="project-modal-close" id="projectModalClose" aria-label="Close dialog">&times;</button>
+        <div class="project-modal-media">
+          <img id="projectModalImg" src="" alt="Project Preview" class="project-modal-img">
+        </div>
+        <div class="project-modal-body">
+          <span id="projectModalCat" class="project-modal-cat"></span>
+          <h3 id="projectModalTitle" class="project-modal-title"></h3>
+          <p id="projectModalDesc" class="project-modal-desc"></p>
+        </div>
+      </div>
+    </div>
 
     <section id="testimonials" class="section-container" data-scroll-section>
       <div class="section-header">
